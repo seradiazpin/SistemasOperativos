@@ -13,13 +13,13 @@ struct perro
 	char nombre[32];
 	int edad;
 	char raza[16];
+	float estatura;
 	float peso;
 	char sexo;
 };
 
 int main(){
 	int salirVar = 1;
-	FILE *file;
 	do{
 		printf("\tMASCOTAS\n");
 		printf("-------------------------\n");
@@ -47,7 +47,7 @@ int main(){
 				break;
 			case(5):
 				/* Aca no seria mejor un simple return 0*/
-				return 0;
+				salirVar=0;
 				break;
 			default:
 				printf("Seleccione una opcion adecuada\n");
@@ -56,22 +56,19 @@ int main(){
 	}while(salirVar==1);
 }
 
-void abrir (FILE *file, bool AW){  //Recibe un apuntador al cual le asigna el archivo, el bool es para saber si se va a agregar o a leer TRUE= leer FALSE=agregar
-	if(AW){
-		file=fopen("dataDogs.dat","w");
-		if(file==NULL){
-				perror("Error al abrir el archivo de lectura");
+FILE *  abrir (){  
+		FILE *fi;
+		fi=fopen("dataDogs.dat","a+");
+		if(fi == NULL){
+			perror("\nError al abrir el archivo para escritura");
+			return NULL;	
+		}else{
+			return fi;
 		}	
-	}else{
-		file=fopen("dataDogs.dat","a+");
-		if(file==NULL){
-				perror("Error al abrir el archivo para escritura");
-		}
-	}	
 }
 void cerrar(FILE *file){
-	if(fclose(fd)=!0){
-		perror("Error al cerrar el archivo");
+	if(!fclose(file)==0){
+		perror("\nError al cerrar el archivo");
 	}
 }
 
@@ -81,8 +78,13 @@ ingresar(){
 	FILE *fd;
 	perros = malloc(sizeof(struct perro));
 	cargar(perros);
-	abrir(fd,FALSE)//fd = fopen("dogsData.dat","w+");
+	imprimirPerro(perros);
+	/*abrir(fd);//fd = fopen("dogsData.dat","w+");	*/
+	fd=abrir();
 	int data = fwrite(perros,sizeof(struct perro),1,fd);
+	if(data<=0){
+		perror("Error de escritura");
+	}
 	cerrar(fd);
 	free(perros);
 
@@ -110,7 +112,7 @@ leer(){
 	int numeroRegistros = 0;
 	struct perro *lectura;
 	lectura = malloc(sizeof(struct perro));
-	fd = fopen("dogsData.dat","r+");
+	fd=abrir();
 	fseek(fd, 0, SEEK_END);
 	numeroRegistros = ftell(fd)/sizeof(struct perro);
 	printf("\n----------Leer Registro---------- ");
@@ -118,13 +120,14 @@ leer(){
 	printf("\nRegistro:\t ");
 	int opcion = 0;
 	scanf("%d",&opcion);
+	opcion=opcion-1;
 	if(fseek(fd,opcion,SEEK_SET)==0){
 		fread(lectura,sizeof(struct perro),1,fd);
 		imprimirPerro(lectura);
 	}else{
 		printf("Introdusca un registro correcto\n");
 	}
-	fclose(fd);
+	cerrar(fd);
 	free(lectura);
 	
 }
@@ -134,6 +137,7 @@ imprimirPerro(void *ap){
 	printf("\n Nombre: %s",perros->nombre);
 	printf("\n Edad: %i",perros->edad);
 	printf("\n Raza: %s",perros->raza);
+	printf("\n Estatura %f",perros->estatura);
 	printf("\n Peso: %f",perros->peso);
 	printf("\n sexo: %c",perros->sexo);
 	printf("\n");	

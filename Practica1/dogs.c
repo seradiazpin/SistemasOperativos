@@ -151,8 +151,47 @@ imprimirPerro(void *ap){
 }
 
 borrar(){
-	printf("Borrar\n");
+	FILE *fd;
+	FILE *newfd;
+	int found = 0;
+	int numeroRegistros = 0;
+	struct perro perros;
+	fd = fopen("dataDogs.dat","r+");
+	newfd = fopen("temp.dat","w+");
+	long tamano=sizeof(struct perro);
+	fseek(fd, 0, SEEK_END);
+	numeroRegistros = ftell(fd)/tamano;
+	int opcion = 0;
+	do{
+		printf("\n----------Leer Registro---------- ");
+		printf("\nPerros registrados: %i",numeroRegistros);
+		printf("\nRegistro:\t ");		
+		scanf("%d",&opcion);	
+		if(opcion<0 || opcion >= numeroRegistros){
+			printf("Introdusca un registro correcto\n");
+		}
+	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+	rewind(fd);
+	while (fread(&perros,sizeof(struct perro),1,fd) != NULL) {
+		if (opcion == ftell(fd)/tamano-1) {
+			printf("Perro Borrado.\n\n");
+			found=1;
+		} else {
+			fwrite(&perros, sizeof(struct perro), 1, newfd);
+		}
+	}
+	if (! found) {
+		printf("No se encontro el registro n: %d\n\n", opcion);
+	}
+
+	fclose(fd);
+	fclose(newfd);
+
+	remove("dataDogs.dat");
+	rename("temp.dat", "dataDogs.dat");
+
 }
+
 buscar(){
 	printf("Buscar\n");
 }

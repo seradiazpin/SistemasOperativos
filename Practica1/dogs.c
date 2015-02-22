@@ -165,16 +165,16 @@ borrar(){
 	numeroRegistros = ftell(fd)/tamano;
 	int opcion = 0;
 	do{
-		printf("\n----------Leer Registro---------- ");
+		printf("\n----------Borrar Registro---------- ");
 		printf("\nPerros registrados: %i",numeroRegistros);
-		printf("\nRegistro:\t ");		
+		printf("\nRegistro que desea borrar:\t ");		
 		scanf("%d",&opcion);	
 		if(opcion<0 || opcion >= numeroRegistros){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
 	rewind(fd);
-	while (fread(&perros,sizeof(struct perro),1,fd) != NULL) {
+	while (fread(&perros,sizeof(struct perro),1,fd) != 0) {
 		if (opcion == ftell(fd)/tamano-1) {
 			printf("Perro Borrado.\n\n");
 			found=1;

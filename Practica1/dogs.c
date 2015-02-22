@@ -176,11 +176,11 @@ buscar(){
 		if(strcmp(opcion,busqueda->nombre) == 0){
 			printf("\n----------El numero del registro es : %i----------",numRegistro);
 			imprimirPerro(busqueda);
-			printf("\n--------------------------------------------------");
+			printf("\n--------------------------------------------------\n");
 			encontrados=encontrados+1;
 		}		
 	}
-	printf("\nSe encontro %i registos con ese nombre\n",encontrados);
+	printf("\nSe encontro %i registos con ese nombre\n\n",encontrados);
 	cerrar(fd);
 	free(busqueda);
 }

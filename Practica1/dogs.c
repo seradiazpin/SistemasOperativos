@@ -8,6 +8,8 @@ Autores: Sergio Alejandro Diaz Pinilla
 #include<stdio.h>
 #include<stdlib.h>
 #include<errno.h>
+#include<string.h>
+
 struct perro
 {
 	char nombre[32];
@@ -193,5 +195,31 @@ borrar(){
 }
 
 buscar(){
-	printf("Buscar\n");
+	FILE *fd;
+	int numeroRegistros = 0, numRegistro, encontrados=0;
+	struct perro *busqueda;
+	long tamano=sizeof(struct perro), tamArchivo;
+	busqueda = malloc(tamano);
+	fd=abrir();
+	fseek(fd, 0, SEEK_END);
+	tamArchivo=ftell(fd);
+	numeroRegistros = tamArchivo/tamano;
+	char opcion [32];
+	printf("\n----------Buscar Registro---------- ");
+	printf("\nPerros registrados: %i",numeroRegistros);
+	printf("\nDigite el nombre del perro :\t ");		
+	scanf(" %s",&opcion);			
+	for(numRegistro=0 ; numRegistro*tamano < tamArchivo ; numRegistro++){
+		fseek(fd,numRegistro*tamano,SEEK_SET);
+		fread(busqueda,tamano,1,fd);
+		if(strcmp(opcion,busqueda->nombre) == 0){
+			printf("\n----------El numero del registro es : %i----------",numRegistro);
+			imprimirPerro(busqueda);
+			printf("\n--------------------------------------------------\n");
+			encontrados=encontrados+1;
+		}		
+	}
+	printf("\nSe encontro %i registos con ese nombre\n\n",encontrados);
+	cerrar(fd);
+	free(busqueda);
 }

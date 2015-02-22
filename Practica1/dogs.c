@@ -61,7 +61,6 @@ ingresar(){
 		perror("ERROR");
 	}
 	fclose(fd);
-	//imprimir(persona);
 	free(perros);
 
 }

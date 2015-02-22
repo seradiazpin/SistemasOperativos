@@ -51,11 +51,11 @@ int main(){
 
 ingresar(){
 	struct perro *perros;
-	printf("----------Ingresar Registro----------\n");
+	printf("\n----------Ingresar Registro----------\n");
 	FILE *fd;
 	perros = malloc(sizeof(struct perro));
 	cargar(perros);
-	fd = fopen("dogsData.dat","w+");
+	fd = fopen("dogsData.dat","a+");
 	int data = fwrite(perros,sizeof(struct perro),1,fd);
 	if (fd == NULL){
 		perror("ERROR");
@@ -82,8 +82,39 @@ cargar(void *ap){
 }
 
 leer(){
-	printf("Leer\n");
+	FILE *fd;
+	int numeroRegistros = 0;
+	struct perro *lectura;
+	lectura = malloc(sizeof(struct perro));
+	fd = fopen("dogsData.dat","r+");
+	fseek(fd, 0, SEEK_END);
+	numeroRegistros = ftell(fd)/sizeof(struct perro);
+	printf("\n----------Leer Registro---------- ");
+	printf("\nPerros registrados: %i",numeroRegistros);
+	printf("\nRegistro:\t ");
+	int opcion = 0;
+	scanf("%d",&opcion);
+	if(fseek(fd,opcion,SEEK_SET)==0){
+		fread(lectura,sizeof(struct perro),1,fd);
+		imprimirPerro(lectura);
+	}else{
+		printf("Introdusca un registro correcto\n");
+	}
+	fclose(fd);
+	free(lectura);
+	
 }
+imprimirPerro(void *ap){
+	struct perro *perros;
+	perros = ap;
+	printf("\n Nombre: %s",perros->nombre);
+	printf("\n Edad: %i",perros->edad);
+	printf("\n Raza: %s",perros->raza);
+	printf("\n Peso: %f",perros->peso);
+	printf("\n sexo: %c",perros->sexo);
+	printf("\n");	
+}
+
 borrar(){
 	printf("Borrar\n");
 }

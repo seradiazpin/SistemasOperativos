@@ -38,6 +38,7 @@ int main(){
 				buscar();
 				break;
 			case(5):
+				/* Aca no seria mejor un simple return 0*/
 				salir();
 				break;
 			default:

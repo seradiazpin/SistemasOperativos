@@ -48,7 +48,6 @@ int main(){
 				buscar();
 				break;
 			case(5):
-				/* Aca no seria mejor un simple return 0*/
 				salirVar=0;
 				break;
 			default:
@@ -81,7 +80,6 @@ ingresar(){
 	perros = malloc(sizeof(struct perro));
 	cargar(perros);
 	imprimirPerro(perros);
-	/*abrir(fd);//fd = fopen("dogsData.dat","w+");	*/
 	fd=abrir();
 	int data = fwrite(perros,sizeof(struct perro),1,fd);
 	if(data<=0){
@@ -109,8 +107,6 @@ cargar(void *ap){
 	printf("\n");
 
 }
-/*No pude hacer que lo leyera normal solo lo puede leer en binario
-tambien faltan las comprobaciones de entradas para que no saque error*/
 leer(){
 	FILE *fd;
 	int numeroRegistros = 0;

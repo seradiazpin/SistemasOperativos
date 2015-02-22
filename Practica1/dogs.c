@@ -39,7 +39,7 @@ int main(){
 				break;
 			case(5):
 				/* Aca no seria mejor un simple return 0*/
-				salir();
+				return 0;
 				break;
 			default:
 				printf("Seleccione una opcion adecuada\n");
@@ -89,9 +89,4 @@ borrar(){
 }
 buscar(){
 	printf("Buscar\n");
-}
-int salir(){
-	printf("Exit\n");
-	exit(1);
-
 }

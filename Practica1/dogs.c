@@ -177,6 +177,8 @@ borrar(){
 	while (fread(&perros,sizeof(struct perro),1,fd) != 0) {
 		if (opcion == ftell(fd)/tamano-1) {
 			printf("Perro Borrado.\n\n");
+			fread(&perros,sizeof(struct perro),1,fd);
+			imprimirPerro(&perros);
 			found=1;
 		} else {
 			fwrite(&perros, sizeof(struct perro), 1, newfd);

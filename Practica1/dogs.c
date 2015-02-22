@@ -1,3 +1,10 @@
+/*-----------------------------------------------
+Sistemas Operativos primera practica
+
+Autores: Sergio Alejandro Diaz Pinilla
+	 Osmar Alejandro Castillo Lancheros
+-----------------------------------------------*/
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<errno.h>
@@ -12,7 +19,8 @@ struct perro
 
 int main(){
 	int salirVar = 1;
-	while(salirVar == 1){
+	FILE *file;
+	do{
 		printf("\tMASCOTAS\n");
 		printf("-------------------------\n");
 		printf("|1)Ingresar Registro\t|\n");
@@ -45,10 +53,15 @@ int main(){
 				printf("Seleccione una opcion adecuada\n");
 				break;
 		}
-	}
+	}while(salirVar==1);
 }
 
-
+void abrir (FILE *file){
+	file=fopen("dataDogs.dat","a+");
+	if(file==NULL){
+		perror("Error al abrir el archivo");
+	}	
+}
 ingresar(){
 	struct perro *perros;
 	printf("\n----------Ingresar Registro----------\n");

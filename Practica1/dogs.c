@@ -93,7 +93,8 @@ cargar(void *ap){
 	printf("\n");
 
 }
-
+/*No pude hacer que lo leyera normal solo lo puede leer en binario
+tambien faltan las comprobaciones de entradas para que no saque error*/
 leer(){
 	FILE *fd;
 	int numeroRegistros = 0;

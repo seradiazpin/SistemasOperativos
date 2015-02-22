@@ -98,6 +98,8 @@ cargar(void *ap){
 	scanf(" %i",&ingreso->edad);
 	printf("\n Raza: ");
 	scanf(" %s",ingreso->raza);
+	printf("\n Estatura: ");
+	scanf(" %f",&ingreso->estatura);
 	printf("\n Peso: ");
 	scanf(" %f",&ingreso->peso);	
 	printf("\n Sexo M/H: ");
@@ -111,21 +113,26 @@ leer(){
 	FILE *fd;
 	int numeroRegistros = 0;
 	struct perro *lectura;
-	lectura = malloc(sizeof(struct perro));
+	long tamano=sizeof(struct perro);
+	lectura = malloc(tamano);
 	fd=abrir();
 	fseek(fd, 0, SEEK_END);
-	numeroRegistros = ftell(fd)/sizeof(struct perro);
-	printf("\n----------Leer Registro---------- ");
-	printf("\nPerros registrados: %i",numeroRegistros);
-	printf("\nRegistro:\t ");
+	numeroRegistros = ftell(fd)/tamano;
 	int opcion = 0;
-	scanf("%d",&opcion);
-	opcion=opcion-1;
-	if(fseek(fd,opcion,SEEK_SET)==0){
+	do{
+		printf("\n----------Leer Registro---------- ");
+		printf("\nPerros registrados: %i",numeroRegistros);
+		printf("\nRegistro:\t ");		
+		scanf("%d",&opcion);	
+		if(opcion<0 || opcion >= numeroRegistros){
+			printf("Introdusca un registro correcto\n");
+		}
+	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+	if(fseek(fd,opcion*tamano,SEEK_SET)==0){
 		fread(lectura,sizeof(struct perro),1,fd);
 		imprimirPerro(lectura);
 	}else{
-		printf("Introdusca un registro correcto\n");
+		printf("Error de lectura");
 	}
 	cerrar(fd);
 	free(lectura);
@@ -137,7 +144,7 @@ imprimirPerro(void *ap){
 	printf("\n Nombre: %s",perros->nombre);
 	printf("\n Edad: %i",perros->edad);
 	printf("\n Raza: %s",perros->raza);
-	printf("\n Estatura %f",perros->estatura);
+	printf("\n Estatura: %f",perros->estatura);
 	printf("\n Peso: %f",perros->peso);
 	printf("\n sexo: %c",perros->sexo);
 	printf("\n");	

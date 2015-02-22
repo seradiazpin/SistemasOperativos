@@ -56,24 +56,34 @@ int main(){
 	}while(salirVar==1);
 }
 
-void abrir (FILE *file){
-	file=fopen("dataDogs.dat","a+");
-	if(file==NULL){
-		perror("Error al abrir el archivo");
+void abrir (FILE *file, bool AW){  //Recibe un apuntador al cual le asigna el archivo, el bool es para saber si se va a agregar o a leer TRUE= leer FALSE=agregar
+	if(AW){
+		file=fopen("dataDogs.dat","w");
+		if(file==NULL){
+				perror("Error al abrir el archivo de lectura");
+		}	
+	}else{
+		file=fopen("dataDogs.dat","a+");
+		if(file==NULL){
+				perror("Error al abrir el archivo para escritura");
+		}
 	}	
 }
+void cerrar(FILE *file){
+	if(fclose(fd)=!0){
+		perror("Error al cerrar el archivo");
+	}
+}
+
 ingresar(){
 	struct perro *perros;
 	printf("\n----------Ingresar Registro----------\n");
 	FILE *fd;
 	perros = malloc(sizeof(struct perro));
 	cargar(perros);
-	fd = fopen("dogsData.dat","a+");
+	abrir(fd,FALSE)//fd = fopen("dogsData.dat","w+");
 	int data = fwrite(perros,sizeof(struct perro),1,fd);
-	if (fd == NULL){
-		perror("ERROR");
-	}
-	fclose(fd);
+	cerrar(fd);
 	free(perros);
 
 }

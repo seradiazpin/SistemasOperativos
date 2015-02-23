@@ -21,8 +21,9 @@ struct perro
 };
 
 int main(){
-	int salirVar = 1;
+	int opcion = 0;
 	do{
+		opcion=0;
 		printf("\tMASCOTAS\n");
 		printf("-------------------------\n");
 		printf("|1)Ingresar Registro\t|\n");
@@ -31,9 +32,8 @@ int main(){
 		printf("|4)Buscar Registro\t|\n");
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
-		printf("Opcion:\t ");
-		int opcion = 0;
-		scanf("%d",&opcion);
+		printf("Opcion:\t ");		
+		scanf("%d",&opcion);		
 		switch(opcion){
 			case(1):
 				ingresar();
@@ -48,13 +48,13 @@ int main(){
 				buscar();
 				break;
 			case(5):
-				salirVar=0;
+				opcion=5;
 				break;
 			default:
 				printf("Seleccione una opcion adecuada\n");
 				break;
 		}
-	}while(salirVar==1);
+	}while( opcion != 5);
 }
 
 FILE *  abrir (){  
@@ -93,18 +93,20 @@ cargar(void *ap){
 	struct perro *ingreso;
 	ingreso = ap;
 	printf("\n Nombre: ");
-	scanf(" %s",ingreso->nombre);
+	scanf( " %31[^\n]",ingreso->nombre);
 	printf("\n Edad: ");
-	scanf(" %i",&ingreso->edad);
+	scanf(" %d",&ingreso->edad);
 	printf("\n Raza: ");
-	scanf(" %s",ingreso->raza);
+	scanf(" %15[^\n]",ingreso->raza);
 	printf("\n Estatura: ");
 	scanf(" %f",&ingreso->estatura);
 	printf("\n Peso: ");
-	scanf(" %f",&ingreso->peso);	
-	printf("\n Sexo M/H: ");
-	scanf(" %c",&ingreso->sexo);
-	printf("\n");
+	scanf(" %f",&ingreso->peso);
+	do{	
+		printf("\n Sexo M/H: ");
+		scanf(" %c",&ingreso->sexo);
+		printf("\n");
+	}while(!(ingreso->sexo == 'M' || ingreso->sexo == 'H'));
 
 }
 leer(){
@@ -126,11 +128,11 @@ leer(){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
-	if(fseek(fd,opcion*tamano,SEEK_SET)==0){
+	if((! numeroRegistros == 0 )&& (fseek(fd,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct perro),1,fd);
 		imprimirPerro(lectura);
 	}else{
-		printf("Error de lectura");
+		printf("\nNo se encontro\n");
 	}
 	cerrar(fd);
 	free(lectura);
@@ -205,7 +207,7 @@ buscar(){
 	printf("\n----------Buscar Registro---------- ");
 	printf("\nPerros registrados: %i",numeroRegistros);
 	printf("\nDigite el nombre del perro :\t ");		
-	scanf(" %s",&opcion);			
+	scanf(" %31[^\n]",&opcion);			
 	for(numRegistro=0 ; numRegistro*tamano < tamArchivo ; numRegistro++){
 		fseek(fd,numRegistro*tamano,SEEK_SET);
 		fread(busqueda,tamano,1,fd);

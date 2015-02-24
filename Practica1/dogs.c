@@ -28,9 +28,9 @@ void cargar();
 void imprimirPerro();
 
 int main(){
-	int opcion = 0;
+	char opcion = ' ';
 	do{
-		opcion=0;
+		opcion="";
 		printf("\tMASCOTAS\n");
 		printf("-------------------------\n");
 		printf("|1)Ingresar Registro\t|\n");
@@ -40,29 +40,29 @@ int main(){
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
 		printf("Opcion:\t ");		
-		
-		scanf("%d",&opcion);	
+		opcion = getchar();
+		//scanf("%c",&opcion);	
 		switch(opcion){
-			case(1):
+			case('1'):
 				ingresar();
 				break;
-			case(2):
+			case('2'):
 				leer();
 				break;
-			case(3):
+			case('3'):
 				borrar();
 				break;
-			case(4):
+			case('4'):
 				buscar();
 				break;
-			case(5):
-				opcion=5;
+			case('5'):
+				opcion='5';
 				break;
 			default:
 				printf("Seleccione una opcion adecuada\n");
 				break;
 		}
-	}while( opcion != 5);
+	}while( opcion != '5');
 }
 
 FILE *  abrir (){  

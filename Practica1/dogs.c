@@ -40,9 +40,9 @@ int main(){
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
 		printf("Opcion:\t ");
-		do{		
+			
 		opcion = getchar();
-		}while(opcion=='\n');
+	
 		//scanf("%c",&opcion);	
 		switch(opcion){
 			case('1'):

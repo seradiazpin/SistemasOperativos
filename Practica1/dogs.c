@@ -20,6 +20,13 @@ struct perro
 	char sexo;
 };
 
+void ingresar();
+void leer();
+void borrar();
+void buscar();
+void cargar();
+void imprimirPerro();
+
 int main(){
 	int opcion = 0;
 	do{
@@ -33,7 +40,8 @@ int main(){
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
 		printf("Opcion:\t ");		
-		scanf("%d",&opcion);		
+		
+		scanf("%d",&opcion);	
 		switch(opcion){
 			case(1):
 				ingresar();
@@ -73,7 +81,7 @@ void cerrar(FILE *file){
 	}
 }
 
-ingresar(){
+void ingresar(){
 	struct perro *perros;
 	printf("\n----------Ingresar Registro----------\n");
 	FILE *fd;
@@ -89,7 +97,7 @@ ingresar(){
 	free(perros);
 
 }
-cargar(void *ap){
+void cargar(void *ap){
 	struct perro *ingreso;
 	ingreso = ap;
 	printf("\n Nombre: ");
@@ -109,7 +117,7 @@ cargar(void *ap){
 	}while(!(ingreso->sexo == 'M' || ingreso->sexo == 'H'));
 
 }
-leer(){
+void leer(){
 	FILE *fd;
 	int numeroRegistros = 0;
 	struct perro *lectura;
@@ -138,7 +146,7 @@ leer(){
 	free(lectura);
 	
 }
-imprimirPerro(void *ap){
+void imprimirPerro(void *ap){
 	struct perro *perros;
 	perros = ap;
 	printf("\n Nombre: %s",perros->nombre);
@@ -150,7 +158,7 @@ imprimirPerro(void *ap){
 	printf("\n");	
 }
 
-borrar(){
+void borrar(){
 	FILE *fd;
 	FILE *newfd;
 	int found = 0;
@@ -193,7 +201,7 @@ borrar(){
 
 }
 
-buscar(){
+void buscar(){
 	FILE *fd;
 	int numeroRegistros = 0, numRegistro, encontrados=0;
 	struct perro *busqueda;

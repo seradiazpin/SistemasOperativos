@@ -15,7 +15,7 @@ struct perro
 	char nombre[32];
 	int edad;
 	char raza[16];
-	float estatura;
+	int estatura;
 	float peso;
 	char sexo;
 };
@@ -26,6 +26,7 @@ void borrar();
 void buscar();
 void cargar();
 void imprimirPerro();
+long validarEntrada();
 
 int main(){
 	char opcion = ' ';
@@ -107,13 +108,13 @@ void cargar(void *ap){
 	printf("\n Nombre: ");
 	scanf( " %31[^\n]",ingreso->nombre);
 	printf("\n Edad: ");
-	scanf(" %d",&ingreso->edad);
+	ingreso->edad=validarEntrada();
 	printf("\n Raza: ");
 	scanf(" %15[^\n]",ingreso->raza);
 	printf("\n Estatura: ");
-	scanf(" %f",&ingreso->estatura);
+	ingreso->estatura=validarEntrada();
 	printf("\n Peso: ");
-	scanf(" %f",&ingreso->peso);
+	ingreso->peso=validarEntrada();
 	do{	
 		printf("\n Sexo M/H: ");
 		scanf(" %c",&ingreso->sexo);
@@ -233,4 +234,17 @@ void buscar(){
 	printf("\nSe encontro %i registos con ese nombre\n\n",encontrados);
 	cerrar(fd);
 	free(busqueda);
+}
+long validarEntrada(){
+	char entrada [32], *error;
+	long numero = 0,digito=1;
+	do{
+		scanf(" %s",entrada);
+		numero=strtoll(entrada,&error,10);
+		if(*error!='\0'){
+			printf("\nDigite un numero valido\n");
+		}
+	}while(*error != '\0');
+	return numero;
+
 }

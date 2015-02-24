@@ -63,6 +63,7 @@ int main(){
 			default:
 				printf("Seleccione una opcion adecuada\n");
 				opcion= ' ';
+				while(getchar()!='\n');
 				break;
 		}
 	}while( opcion != '5');

@@ -30,7 +30,7 @@ void imprimirPerro();
 int main(){
 	char opcion = ' ';
 	do{
-		opcion="";
+		
 		printf("\tMASCOTAS\n");
 		printf("-------------------------\n");
 		printf("|1)Ingresar Registro\t|\n");
@@ -39,8 +39,10 @@ int main(){
 		printf("|4)Buscar Registro\t|\n");
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
-		printf("Opcion:\t ");		
+		printf("Opcion:\t ");
+		do{		
 		opcion = getchar();
+		}while(opcion=='\n');
 		//scanf("%c",&opcion);	
 		switch(opcion){
 			case('1'):
@@ -60,6 +62,7 @@ int main(){
 				break;
 			default:
 				printf("Seleccione una opcion adecuada\n");
+				opcion= ' ';
 				break;
 		}
 	}while( opcion != '5');

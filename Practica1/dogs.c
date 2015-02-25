@@ -5,10 +5,10 @@ Autores: Sergio Alejandro Diaz Pinilla
 	 Osmar Alejandro Castillo Lancheros
 -----------------------------------------------*/
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<errno.h>
-#include<string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
 
 struct perro
 {
@@ -27,6 +27,7 @@ void buscar();
 void cargar();
 void imprimirPerro();
 long validarEntrada();
+void confirmar();
 
 int main(){
 	char opcion = ' ';
@@ -41,7 +42,7 @@ int main(){
 		printf("|5)Salir\t\t|\n");
 		printf("-------------------------\n");
 		printf("Opcion:\t ");
-			
+		
 		opcion = getchar();
 	
 		//scanf("%c",&opcion);	
@@ -67,6 +68,7 @@ int main(){
 				while(getchar()!='\n');
 				break;
 		}
+		while(getchar()!='\n');
 	}while( opcion != '5');
 }
 
@@ -100,6 +102,7 @@ void ingresar(){
 	}
 	cerrar(fd);
 	free(perros);
+	confirmar();
 
 }
 void cargar(void *ap){
@@ -149,7 +152,7 @@ void leer(){
 	}
 	cerrar(fd);
 	free(lectura);
-	
+	confirmar();
 }
 void imprimirPerro(void *ap){
 	struct perro *perros;
@@ -157,7 +160,7 @@ void imprimirPerro(void *ap){
 	printf("\n Nombre: %s",perros->nombre);
 	printf("\n Edad: %i",perros->edad);
 	printf("\n Raza: %s",perros->raza);
-	printf("\n Estatura: %f",perros->estatura);
+	printf("\n Estatura: %i",perros->estatura);
 	printf("\n Peso: %f",perros->peso);
 	printf("\n sexo: %c",perros->sexo);
 	printf("\n");	
@@ -204,6 +207,8 @@ void borrar(){
 	remove("dataDogs.dat");
 	rename("temp.dat", "dataDogs.dat");
 
+	confirmar();
+
 }
 
 void buscar(){
@@ -220,7 +225,7 @@ void buscar(){
 	printf("\n----------Buscar Registro---------- ");
 	printf("\nPerros registrados: %i",numeroRegistros);
 	printf("\nDigite el nombre del perro :\t ");		
-	scanf(" %31[^\n]",&opcion);			
+	scanf(" %31[^\n]",opcion);			
 	for(numRegistro=0 ; numRegistro*tamano < tamArchivo ; numRegistro++){
 		fseek(fd,numRegistro*tamano,SEEK_SET);
 		fread(busqueda,tamano,1,fd);
@@ -234,6 +239,7 @@ void buscar(){
 	printf("\nSe encontro %i registos con ese nombre\n\n",encontrados);
 	cerrar(fd);
 	free(busqueda);
+	confirmar();
 }
 long validarEntrada(){
 	char entrada [32], *error;
@@ -247,4 +253,9 @@ long validarEntrada(){
 	}while(*error != '\0');
 	return numero;
 
+}
+
+void confirmar(){
+	system("read -sn 1 -p 'Presione cualquier tecla para continuar...'");
+	printf("\n");
 }

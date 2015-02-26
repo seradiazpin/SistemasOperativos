@@ -10,7 +10,7 @@ Autores: Sergio Alejandro Diaz Pinilla
 #include <errno.h>
 #include <string.h>
 
-struct perro
+struct dogType
 {
 	char nombre[32];
 	int edad;
@@ -89,14 +89,14 @@ void cerrar(FILE *file){
 }
 
 void ingresar(){
-	struct perro *perros;
+	struct dogType *perros;
 	printf("\n----------Ingresar Registro----------\n");
 	FILE *fd;
-	perros = malloc(sizeof(struct perro));
+	perros = malloc(sizeof(struct dogType));
 	cargar(perros);
 	imprimirPerro(perros);
 	fd=abrir();
-	int data = fwrite(perros,sizeof(struct perro),1,fd);
+	int data = fwrite(perros,sizeof(struct dogType),1,fd);
 	if(data<=0){
 		perror("Error de escritura");
 	}
@@ -106,7 +106,7 @@ void ingresar(){
 
 }
 void cargar(void *ap){
-	struct perro *ingreso;
+	struct dogType *ingreso;
 	ingreso = ap;
 	printf("\n Nombre: ");
 	scanf( " %31[^\n]",ingreso->nombre);
@@ -128,8 +128,8 @@ void cargar(void *ap){
 void leer(){
 	FILE *fd;
 	int numeroRegistros = 0;
-	struct perro *lectura;
-	long tamano=sizeof(struct perro);
+	struct dogType *lectura;
+	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
 	fd=abrir();
 	fseek(fd, 0, SEEK_END);
@@ -145,7 +145,7 @@ void leer(){
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
 	if((! numeroRegistros == 0 )&& (fseek(fd,opcion*tamano,SEEK_SET)==0)){
-		fread(lectura,sizeof(struct perro),1,fd);
+		fread(lectura,sizeof(struct dogType),1,fd);
 		imprimirPerro(lectura);
 	}else{
 		printf("\nNo se encontro\n");
@@ -155,7 +155,7 @@ void leer(){
 	confirmar();
 }
 void imprimirPerro(void *ap){
-	struct perro *perros;
+	struct dogType *perros;
 	perros = ap;
 	printf("\n Nombre: %s",perros->nombre);
 	printf("\n Edad: %i",perros->edad);
@@ -171,10 +171,10 @@ void borrar(){
 	FILE *newfd;
 	int found = 0;
 	int numeroRegistros = 0;
-	struct perro perros;
+	struct dogType perros;
 	fd = fopen("dataDogs.dat","r+");
 	newfd = fopen("temp.dat","w+");
-	long tamano=sizeof(struct perro);
+	long tamano=sizeof(struct dogType);
 	fseek(fd, 0, SEEK_END);
 	numeroRegistros = ftell(fd)/tamano;
 	int opcion = 0;
@@ -188,13 +188,13 @@ void borrar(){
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
 	rewind(fd);
-	while (fread(&perros,sizeof(struct perro),1,fd) != 0) {
+	while (fread(&perros,sizeof(struct dogType),1,fd) != 0) {
 		if (opcion == ftell(fd)/tamano-1) {
 			printf("Perro Borrado.\n\n");
 			imprimirPerro(&perros);
 			found=1;
 		} else {
-			fwrite(&perros, sizeof(struct perro), 1, newfd);
+			fwrite(&perros, sizeof(struct dogType), 1, newfd);
 		}
 	}
 	if (! found) {
@@ -214,8 +214,8 @@ void borrar(){
 void buscar(){
 	FILE *fd;
 	int numeroRegistros = 0, numRegistro, encontrados=0;
-	struct perro *busqueda;
-	long tamano=sizeof(struct perro), tamArchivo;
+	struct dogType *busqueda;
+	long tamano=sizeof(struct dogType), tamArchivo;
 	busqueda = malloc(tamano);
 	fd=abrir();
 	fseek(fd, 0, SEEK_END);

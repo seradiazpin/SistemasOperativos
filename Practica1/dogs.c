@@ -28,6 +28,7 @@ void cargar();
 void imprimirPerro();
 long validarEntrada();
 void confirmar();
+void minToMay();
 
 int main(){
 	char opcion = ' ';
@@ -214,6 +215,7 @@ void borrar(){
 void buscar(){
 	FILE *fd;
 	int numeroRegistros = 0, numRegistro, encontrados=0;
+	char nameIn[32],nameTmp[32];
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType), tamArchivo;
 	busqueda = malloc(tamano);
@@ -229,7 +231,11 @@ void buscar(){
 	for(numRegistro=0 ; numRegistro*tamano < tamArchivo ; numRegistro++){
 		fseek(fd,numRegistro*tamano,SEEK_SET);
 		fread(busqueda,tamano,1,fd);
-		if(strcmp(opcion,busqueda->nombre) == 0){
+		strcpy(nameIn,opcion);
+		strcpy(nameTmp,busqueda->nombre);
+		minToMay(nameIn);
+		minToMay(nameTmp);
+		if(strcmp(nameIn,nameTmp) == 0){
 			printf("\n----------El numero del registro es : %i----------",numRegistro);
 			imprimirPerro(busqueda);
 			printf("\n--------------------------------------------------\n");
@@ -258,4 +264,16 @@ long validarEntrada(){
 void confirmar(){
 	system("read -sn 1 -p 'Presione cualquier tecla para continuar...'");
 	printf("\n");
+}
+void minToMay(char string[])
+{
+	int i=0;
+	int desp='a'-'A';
+	for (i=0;string[i]!='\0';++i)
+	{
+		if(string[i]>='a'&&string[i]<='z')
+		{
+			string[i]=string[i]-desp;
+		}
+	}
 }

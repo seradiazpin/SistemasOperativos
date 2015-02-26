@@ -112,19 +112,18 @@ void cargar(void *ap){
 	printf("\n Nombre: ");
 	scanf( " %31[^\n]",ingreso->nombre);
 	printf("\n Edad: ");
-	ingreso->edad=validarEntrada();
+	scanf(" %d",&ingreso->edad);
 	printf("\n Raza: ");
 	scanf(" %15[^\n]",ingreso->raza);
 	printf("\n Estatura: ");
-	ingreso->estatura=validarEntrada();
+	scanf(" %i",&ingreso->estatura);
 	printf("\n Peso: ");
-	ingreso->peso=validarEntrada();
+	scanf(" %f",&ingreso->peso);
 	do{	
 		printf("\n Sexo M/H: ");
 		scanf(" %c",&ingreso->sexo);
 		printf("\n");
 	}while(!(ingreso->sexo == 'M' || ingreso->sexo == 'H'));
-
 }
 void leer(){
 	FILE *fd;
@@ -162,7 +161,7 @@ void imprimirPerro(void *ap){
 	printf("\n Edad: %i",perros->edad);
 	printf("\n Raza: %s",perros->raza);
 	printf("\n Estatura: %i",perros->estatura);
-	printf("\n Peso: %f",perros->peso);
+	printf("\n Peso: %3.2f",perros->peso);
 	printf("\n sexo: %c",perros->sexo);
 	printf("\n");	
 }
@@ -247,20 +246,6 @@ void buscar(){
 	free(busqueda);
 	confirmar();
 }
-long validarEntrada(){
-	char entrada [32], *error;
-	long numero = 0,digito=1;
-	do{
-		scanf(" %s",entrada);
-		numero=strtoll(entrada,&error,10);
-		if(*error!='\0'){
-			printf("\nDigite un numero valido\n");
-		}
-	}while(*error != '\0');
-	return numero;
-
-}
-
 void confirmar(){
 	system("read -sn 1 -p 'Presione cualquier tecla para continuar...'");
 	printf("\n");

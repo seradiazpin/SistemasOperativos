@@ -24,7 +24,7 @@ struct dogType
 
 FILE *file;
 
-//Declaracion de los  metodos y funciones usados
+//Declaración de los  métodos y funciones usados
 
 void ingresar();
 void leer();
@@ -37,7 +37,7 @@ void confirmar();
 void minToMay();
 
 /*
-	Funcion main
+	Función main
 */
 
 int main(){
@@ -84,7 +84,7 @@ int main(){
 }
 
 /*
-	Funcion para abrir el archivo dataDogs.dat
+	Función para abrir el archivo dataDogs.dat
 	en caso de que no exista es creado.
 */
 
@@ -99,7 +99,7 @@ FILE *  abrir (){
 }
 
 /*
-	Metodo para abrir el archivo
+	Método para abrir el archivo
 */
 void cerrar(FILE *file){
 	if(!fclose(file)==0){
@@ -108,9 +108,9 @@ void cerrar(FILE *file){
 }
 
 /*
-	Metodo para ingresar los perros en el sistema 
+	Método para ingresar los perros en el sistema 
 	y guardarlos en el archivo dataDogs.dat.
-	Usa el metodo cargar para resibir los datos del perro.
+	Usa el método cargar para recibir los datos del perro.
 */
 
 void ingresar(){
@@ -132,7 +132,7 @@ void ingresar(){
 }
 
 /*
-	Metodo para ingresar los perros datos un 
+	Método para ingresar los perros datos un 
 	nuevo perro que este siendo ingresando.
 */
 
@@ -157,7 +157,7 @@ void cargar(void *ap){
 }
 
 /*
-	Metodo para leer un registro del archivo dataDogs.dat
+	Método para leer un registro del archivo dataDogs.dat
 	Se leen los archivos de 0 - (n-1), donde n es el numero
 	de registros.
 	Para imprimir los datos se usa imprimirPerro().
@@ -194,7 +194,7 @@ void leer(){
 }
 
 /*
-	Metodo que imprime los datos de un perro.
+	Método que imprime los datos de un perro.
 */
 
 void imprimirPerro(void *ap){
@@ -210,11 +210,11 @@ void imprimirPerro(void *ap){
 }
 
 /*
-	Metodo para borrar un registro del archivo dataDogs.dat
+	Método para borrar un registro del archivo dataDogs.dat
 	Se leen los archivos de 0 - (n-1), donde n es el numero
 	de registros.
 	Para hacerlo se crea un nuevo archivo temporal y se 
-	renombra despues de haber agregado los perros a esepcion
+	renombra después de haber agregado los perros a excepcion
 	del borrado.
 	Imprime el perro borrado al finalizar.
 */
@@ -265,10 +265,10 @@ void borrar(){
 }
 
 /*
-	Metodo para buscar un perro del archivo dataDogs.dat por
+	Método para buscar un perro del archivo dataDogs.dat por
 	su nombre.
-	No se distinguen mayusculas de minusculas y se retornan 
-	todos los perros que considen.
+	No se distinguen mayúsculas de minúsculas y se retornan 
+	todos los perros que coinciden.
 */
 
 void buscar(){
@@ -308,7 +308,7 @@ void buscar(){
 }
 
 /*
-	Metodo para hacer Presione cualquier tecla para continuar...
+	Método para hacer Presione cualquier tecla para continuar...
 */
 
 void confirmar(){
@@ -317,8 +317,8 @@ void confirmar(){
 }
 
 /*
-	Metodo para poner todas las letras de un string en mayusculas.
-	Se usa en el metodo buscar().
+	Método para poner todas las letras de un string en mayúsculas.
+	Se usa en el método buscar().
 */
 
 void minToMay(char string[])

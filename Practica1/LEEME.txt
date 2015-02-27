@@ -5,6 +5,25 @@ Autores: Sergio Alejandro Diaz Pinilla ......seradiazpin@unal.edu.co
 	 
 Este programa es un gestor para el manejo de datos de una veterinaria, los datos son almacenados en un archivo.
 
+Su programacion solo usa de las librerias: <stdio.h> <stdlib.h> <errno.h> <string.h> las cuales estan incluidas en el paquete estandar.
+
+1. Para su compilacion usamos el programa gcc escribiendo el siguiente comando desde la terminal de algunsistema unix
+
+gcc p1-dogProgram.c -o p1-dogProgram
+
+2. para su ejecucion simplemente se usa el comando 
+
+./p1-dogProgram
+
+3. Importante en el archivo dataDogs.dat se almacena la informacion necesaria para el funcionamiento correcto del programa, por favor no eliminar ni modificar con aplicaciones externas a la indicada
 
 
+--------------------------------------------------------------------
+Advertencias.
+
+- A la hora de ingresar informacion a los registros asegurece de ingresar valores adecuados, para que la ejecucion no tenga errores.
+- Los rangos se manejan en una escala de 0 a x-1
+
+-------------------------------------------------------------------
+Mas informacion https://github.com/seradiazpin/SistemasOperativos/tree/master/Practica1
 	

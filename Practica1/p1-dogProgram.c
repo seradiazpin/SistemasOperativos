@@ -10,6 +10,8 @@ Autores: Sergio Alejandro Diaz Pinilla
 #include <errno.h>
 #include <string.h>
 
+
+//Estructura dogType para almacenar los datos de los perros.
 struct dogType
 {
 	char nombre[32];
@@ -20,6 +22,10 @@ struct dogType
 	char sexo;
 };
 
+FILE *file;
+
+//Declaracion de los  metodos y funciones usados
+
 void ingresar();
 void leer();
 void borrar();
@@ -29,6 +35,10 @@ void imprimirPerro();
 long validarEntrada();
 void confirmar();
 void minToMay();
+
+/*
+	Funcion main
+*/
 
 int main(){
 	char opcion = ' ';
@@ -45,8 +55,7 @@ int main(){
 		printf("Opcion:\t ");
 		
 		opcion = getchar();
-	
-		//scanf("%c",&opcion);	
+
 		switch(opcion){
 			case('1'):
 				ingresar();
@@ -70,42 +79,63 @@ int main(){
 				break;
 		}
 		while(getchar()!='\n');
+		system("clear");
 	}while( opcion != '5');
 }
 
+/*
+	Funcion para abrir el archivo dataDogs.dat
+	en caso de que no exista es creado.
+*/
+
 FILE *  abrir (){  
-		FILE *fi;
-		fi=fopen("dataDogs.dat","a+");
-		if(fi == NULL){
+		file = fopen("dataDogs.dat","a+");
+		if(file == NULL){
 			perror("\nError al abrir el archivo para escritura");
 			return NULL;	
 		}else{
-			return fi;
+			return file;
 		}	
 }
+
+/*
+	Metodo para abrir el archivo
+*/
 void cerrar(FILE *file){
 	if(!fclose(file)==0){
 		perror("\nError al cerrar el archivo");
 	}
 }
 
+/*
+	Metodo para ingresar los perros en el sistema 
+	y guardarlos en el archivo dataDogs.dat.
+	Usa el metodo cargar para resibir los datos del perro.
+*/
+
 void ingresar(){
 	struct dogType *perros;
 	printf("\n----------Ingresar Registro----------\n");
-	FILE *fd;
+	
 	perros = malloc(sizeof(struct dogType));
 	cargar(perros);
 	imprimirPerro(perros);
-	fd=abrir();
-	int data = fwrite(perros,sizeof(struct dogType),1,fd);
+	file=abrir();
+	int data = fwrite(perros,sizeof(struct dogType),1,file);
 	if(data<=0){
 		perror("Error de escritura");
 	}
-	cerrar(fd);
+	cerrar(file);
 	free(perros);
 	confirmar();
 
 }
+
+/*
+	Metodo para ingresar los perros datos un 
+	nuevo perro que este siendo ingresando.
+*/
+
 void cargar(void *ap){
 	struct dogType *ingreso;
 	ingreso = ap;
@@ -125,35 +155,48 @@ void cargar(void *ap){
 		printf("\n");
 	}while(!(ingreso->sexo == 'M' || ingreso->sexo == 'H'));
 }
+
+/*
+	Metodo para leer un registro del archivo dataDogs.dat
+	Se leen los archivos de 0 - (n-1), donde n es el numero
+	de registros.
+	Para imprimir los datos se usa imprimirPerro().
+*/
+
 void leer(){
-	FILE *fd;
+	
 	int numeroRegistros = 0;
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
-	fd=abrir();
-	fseek(fd, 0, SEEK_END);
-	numeroRegistros = ftell(fd)/tamano;
+	file=abrir();
+	fseek(file, 0, SEEK_END);
+	numeroRegistros = ftell(file)/tamano;
 	int opcion = 0;
 	do{
 		printf("\n----------Leer Registro---------- ");
-		printf("\nPerros registrados: %i",numeroRegistros);
+		printf("\nPerros registrados: %i  Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
 		printf("\nRegistro:\t ");		
 		scanf("%d",&opcion);	
 		if(opcion<0 || opcion >= numeroRegistros){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
-	if((! numeroRegistros == 0 )&& (fseek(fd,opcion*tamano,SEEK_SET)==0)){
-		fread(lectura,sizeof(struct dogType),1,fd);
+	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
+		fread(lectura,sizeof(struct dogType),1,file);
 		imprimirPerro(lectura);
 	}else{
 		printf("\nNo se encontro\n");
 	}
-	cerrar(fd);
+	cerrar(file);
 	free(lectura);
 	confirmar();
 }
+
+/*
+	Metodo que imprime los datos de un perro.
+*/
+
 void imprimirPerro(void *ap){
 	struct dogType *perros;
 	perros = ap;
@@ -166,43 +209,53 @@ void imprimirPerro(void *ap){
 	printf("\n");	
 }
 
+/*
+	Metodo para borrar un registro del archivo dataDogs.dat
+	Se leen los archivos de 0 - (n-1), donde n es el numero
+	de registros.
+	Para hacerlo se crea un nuevo archivo temporal y se 
+	renombra despues de haber agregado los perros a esepcion
+	del borrado.
+	Imprime el perro borrado al finalizar.
+*/
+
 void borrar(){
-	FILE *fd;
-	FILE *newfd;
+	
+	FILE *newfile;
 	int found = 0;
 	int numeroRegistros = 0;
 	struct dogType perros;
-	fd = fopen("dataDogs.dat","r+");
-	newfd = fopen("temp.dat","w+");
+	file = fopen("dataDogs.dat","r+");
+	newfile = fopen("temp.dat","w+");
 	long tamano=sizeof(struct dogType);
-	fseek(fd, 0, SEEK_END);
-	numeroRegistros = ftell(fd)/tamano;
+	fseek(file, 0, SEEK_END);
+	numeroRegistros = ftell(file)/tamano;
 	int opcion = 0;
 	do{
 		printf("\n----------Borrar Registro---------- ");
-		printf("\nPerros registrados: %i",numeroRegistros);
+		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
 		printf("\nRegistro que desea borrar:\t ");		
 		scanf("%d",&opcion);	
 		if(opcion<0 || opcion >= numeroRegistros){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
-	rewind(fd);
-	while (fread(&perros,sizeof(struct dogType),1,fd) != 0) {
-		if (opcion == ftell(fd)/tamano-1) {
+	rewind(file);
+	while (fread(&perros,sizeof(struct dogType),1,file) != 0) {
+		if (opcion == ftell(file)/tamano-1) {
 			printf("Perro Borrado.\n\n");
 			imprimirPerro(&perros);
 			found=1;
 		} else {
-			fwrite(&perros, sizeof(struct dogType), 1, newfd);
+			fwrite(&perros, sizeof(struct dogType), 1, newfile);
 		}
 	}
 	if (! found) {
 		printf("No se encontro el registro n: %d\n\n", opcion);
 	}
 
-	fclose(fd);
-	fclose(newfd);
+	fclose(file);
+	fclose(newfile);
 
 	remove("dataDogs.dat");
 	rename("temp.dat", "dataDogs.dat");
@@ -211,16 +264,23 @@ void borrar(){
 
 }
 
+/*
+	Metodo para buscar un perro del archivo dataDogs.dat por
+	su nombre.
+	No se distinguen mayusculas de minusculas y se retornan 
+	todos los perros que considen.
+*/
+
 void buscar(){
-	FILE *fd;
+	
 	int numeroRegistros = 0, numRegistro, encontrados=0;
 	char nameIn[32],nameTmp[32];
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType), tamArchivo;
 	busqueda = malloc(tamano);
-	fd=abrir();
-	fseek(fd, 0, SEEK_END);
-	tamArchivo=ftell(fd);
+	file=abrir();
+	fseek(file, 0, SEEK_END);
+	tamArchivo=ftell(file);
 	numeroRegistros = tamArchivo/tamano;
 	char opcion [32];
 	printf("\n----------Buscar Registro---------- ");
@@ -228,8 +288,8 @@ void buscar(){
 	printf("\nDigite el nombre del perro :\t ");		
 	scanf(" %31[^\n]",opcion);			
 	for(numRegistro=0 ; numRegistro*tamano < tamArchivo ; numRegistro++){
-		fseek(fd,numRegistro*tamano,SEEK_SET);
-		fread(busqueda,tamano,1,fd);
+		fseek(file,numRegistro*tamano,SEEK_SET);
+		fread(busqueda,tamano,1,file);
 		strcpy(nameIn,opcion);
 		strcpy(nameTmp,busqueda->nombre);
 		minToMay(nameIn);
@@ -242,14 +302,25 @@ void buscar(){
 		}		
 	}
 	printf("\nSe encontro %i registos con ese nombre\n\n",encontrados);
-	cerrar(fd);
+	cerrar(file);
 	free(busqueda);
 	confirmar();
 }
+
+/*
+	Metodo para hacer Presione cualquier tecla para continuar...
+*/
+
 void confirmar(){
 	system("read -sn 1 -p 'Presione cualquier tecla para continuar...'");
 	printf("\n");
 }
+
+/*
+	Metodo para poner todas las letras de un string en mayusculas.
+	Se usa en el metodo buscar().
+*/
+
 void minToMay(char string[])
 {
 	int i=0;

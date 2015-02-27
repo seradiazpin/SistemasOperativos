@@ -1,0 +1,10 @@
+ practica #1 Sistemas Operativos Grupo #2 
+
+Autores: Sergio Alejandro Diaz Pinilla ......seradiazpin@unal.edu.co 
+	 Osmar Alejandro Castillo Lancheros ......oacastillol@unal.edu.co
+	 
+Este programa es un gestor para el manejo de datos de una veterinaria, los datos son almacenados en un archivo.
+
+
+
+	

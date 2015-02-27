@@ -79,6 +79,7 @@ int main(){
 				break;
 		}
 		while(getchar()!='\n');
+		system("clear");
 	}while( opcion != '5');
 }
 

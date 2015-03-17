@@ -1,6 +1,9 @@
 # include <stdio.h>
-# include <netienet/in.h> // esta libreria contiene la estructura sockaddr_in
-# include <sys/socket.h> // contiene a socklen_t
+# include <stdlib.h>
+# include <sys/socket.h>
+# include <sys/types.h>
+# include <netinet/in.h> // esta libreria contiene la estructura sockaddr_in
+# include <netdb.h>
 
 
 
@@ -21,8 +24,8 @@ int main(){
 	
 	server.sin_family = AF_INET;
 	server.sin_port = htons(PORT);
-	server.sin_addr.saddr = INADDR_ANY;
-	bzero(server.sin_zeo,8); // pertenece a la libreria strings.h
+	server.sin_addr.s_addr = INADDR_ANY;
+	bzero(server.sin_zero,8); // pertenece a la libreria strings.h
 	
 	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
 	

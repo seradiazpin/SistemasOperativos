@@ -7,8 +7,7 @@
 #include <arpa/inet.h>
 
 #define PORT 3535
-#define BACKLOG 5
-#define FULL 1
+#define BACKLOG 2
 
 /*
 #include <netinet/in.h>
@@ -25,12 +24,14 @@ struct in_addr {
 };
 
 */
+
+void rxfile();
 int main(){
 
-    int serverfd, clientfd, r, opt = 1,isFull = 0;
+    int serverfd, clientfd, r, opt = 1;
     struct sockaddr_in server, client;
-    socklen_t tamano = 0;
-    pid_t pid;
+    socklen_t tamano;
+    char buffer[32];
 
         
     serverfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -57,47 +58,26 @@ int main(){
         perror("\n-->Error en Listen(): ");
         exit(-1);
     }
-
-    static int users = 0;
-
-    while (isFull != FULL)
-   	{
-	    clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano); //accept es una funcion bloquenate se queda esperando a que alguien se conencte
-	    if(clientfd < 0)
-	    {
-	        perror("\n-->Error en accept: ");
-	        exit(-1);
-	    }
-	       
-	    pid = fork();
-	    if (pid < 0){
-	         perror("ERROR on fork");
-	         exit(1);
-	    }
-	      
-	    if (pid == 0){
-	            r = send(clientfd, "hola mundo", 10, 0);
-	            users++;
-	            if(r < 0){
-		            perror("\n-->Error en send(): ");
-		            exit(-1);
-		        }
-	        close(serverfd);
-	        exit(0);
-
-	    }else{
-	    	 users++;
-	         printf("Users:%i\n",users);
-	         close(clientfd);
-	         
-	         if(users > BACKLOG){
-	         	isFull = 1;
-	         }
-			
-	    }
-
-   } 
     
+    clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
+    if(clientfd < 0)
+    {
+        perror("\n-->Error en accept: ");
+        exit(-1);
+    }
+    
+    rxfile(clientfd,buffer,rxfile,r);
+    r = send(clientfd, "hola mundo", 10, 0);
+    if(r < 0){
+        perror("\n-->Error en send(): ");
+        exit(-1);
+    }    
     close(client);   
     close(serverfd);    
+}
+
+void rxfile(int clientfd, char buffer[],int r){
+    r = recv(clientfd, buffer, 32, 0);
+    buffer[r] = 0;
+    printf("\nMensaje recibido: %s", buffer); 
 }

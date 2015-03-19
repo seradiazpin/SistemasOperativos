@@ -7,9 +7,7 @@
 #include <arpa/inet.h>
 
 #define PORT 3535
-#define BACKLOG 5
-#define acti 1
-
+#define BACKLOG 2
 
 /*
 #include <netinet/in.h>
@@ -28,10 +26,10 @@ struct in_addr {
 */
 int main(){
 
-    int serverfd, clientfd, r, opt = 1,hijopid,childCount;
+    int serverfd, clientfd, r, opt = 1;
     struct sockaddr_in server, client;
     socklen_t tamano;
-
+    pid_t pid;
 
         
     serverfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -58,38 +56,38 @@ int main(){
         perror("\n-->Error en Listen(): ");
         exit(-1);
     }
-    while(acti){
+    while (1)
+   {
     clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano);
     if(clientfd < 0)
     {
         perror("\n-->Error en accept: ");
         exit(-1);
-    }else{
-    	hijopid = fork();
-    	switch(hijopid){
-    		case -1:
-    			perror("Error fork");
-    		case 0 :
-    			if(childCount < BACKLOG){
-    				r = send(clientfd, "hola mundo", 10, 0);
-				    if(r < 0){
-				        perror("\n-->Error en send(): ");
-				        exit(-1);
-	    			}   
-    			}else{
-    				perror("Demaciados hijos");
-    			}
-    		default:
-    			childCount++;
-    			close(serverfd);
-    			close(client);   
-
-    	}
     }
-
-    
-   
-    } 
+       
+      pid = fork();
+      if (pid < 0)
+         {
+         perror("ERROR on fork");
+         exit(1);
+         }
       
-  
+      if (pid == 0)
+         {
+            r = send(clientfd, "hola mundo", 10, 0);
+            if(r < 0){
+            perror("\n-->Error en send(): ");
+            exit(-1);
+        }
+         close(serverfd);
+         exit(0);
+         }
+      else
+         {
+         close(clientfd);
+         }
+   } 
+    
+    close(client);   
+    close(serverfd);    
 }

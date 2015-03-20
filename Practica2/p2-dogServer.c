@@ -12,41 +12,18 @@
 
 #define PORT 3141
 #define BACKLOG 32
+
 int isFull();
+int crear();
 
 int main(){
 
-	int serverId,clienteId,r,opt = 1, users=0,status;
-	struct sockaddr_in server, client;
+	int serverId,clienteId,r, users=0,status;
+	struct sockaddr_in  client;
 	socklen_t tamano=0;
-	pid_t pid, end;
-	
-	
-	serverId=socket(AF_INET,SOCK_STREAM,0);
-	if(serverId<0){
-		perror("\nError en socket()\n");
-		exit(-1);
-	}
-	
-	server.sin_family = AF_INET;
-	server.sin_port = htons(PORT);
-	server.sin_addr.s_addr = INADDR_ANY;
-	bzero(server.sin_zero,8); // pertenece a la libreria strings.h
-	
-	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
-	
-	r=bind(serverId,(struct sockaddr *)&server, sizeof(struct sockaddr)); //le da direccion al socket
-	
-	if(r<0){
-		perror("\nError en bind():\n");
-		exit(-1);
-	}
-	
-	r= listen(serverId, BACKLOG);
-	if(r<0){
-		perror("\nError en listen():\n");
-		exit(-1);
-	}
+	pid_t pid, end; // identificador de procesos
+	char buffer[32]; // prueba de funcionamiento
+	serverId=crear();
 	while(isFull(users)){
 		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
@@ -61,12 +38,14 @@ int main(){
 		}
 		if(pid==0){ //Somos hijos
 			printf("soy el hijo # %i ",users);
+			r=recv(clienteId,buffer,32,0 );
+			buffer[r]=0;
+			printf("\n Mensaje recibido %s",buffer);
 			r = send(clienteId, "hola mundo", 10, 0);
                         if(r < 0){
                                perror("\n-->Error en send(): ");
                                exit(-1);
                         }
-                        sleep(1000);
 			close(clienteId);
 	                close(serverId);
 	                exit(0);
@@ -121,4 +100,32 @@ int isFull(int users){
               return 1; 	//para continuar el while
         }
  }
+
+int crear(){
+	printf("entro en crear");
+	int serverId, opt=1,r;
+	struct sockaddr_in server, client;
+	serverId=socket(AF_INET,SOCK_STREAM,0);	
+	if(serverId<0){
+		perror("\nError en socket()\n");
+		exit(-1);
+	}
+	server.sin_family = AF_INET;	
+	server.sin_port = htons(PORT);
+	server.sin_addr.s_addr = INADDR_ANY;
+	bzero(server.sin_zero,8); // pertenece a la libreria strings.h
+	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
+	r=bind(serverId,(struct sockaddr *)&server, sizeof(struct sockaddr)); //le da direccion al socket
+	if(r<0){
+		perror("\nError en bind():\n");
+		exit(-1);
+	}
+	r= listen(serverId, BACKLOG);
+	if(r<0){
+		perror("\nError en listen():\n");
+		exit(-1);
+	}
+	return serverId;
+}
+
 

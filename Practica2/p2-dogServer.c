@@ -13,6 +13,16 @@
 #define PORT 3141
 #define BACKLOG 32
 
+struct dogType
+{
+       char nombre[32];
+       int edad;
+       char raza[16];
+       int estatura;
+       float peso;
+       char  sexo;
+};
+
 int isFull();
 int crear();
 
@@ -46,6 +56,9 @@ int main(){
                                perror("\n-->Error en send(): ");
                                exit(-1);
                         }
+                        //atender usuario
+                        
+                        
 			close(clienteId);
 	                close(serverId);
 	                exit(0);

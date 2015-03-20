@@ -2,19 +2,25 @@
 # include <stdlib.h>
 # include <sys/socket.h>
 # include <sys/types.h>
+# include <sys/wait.h>
 # include <netinet/in.h> // esta libreria contiene la estructura sockaddr_in
 # include <netdb.h>
+# include <arpa/inet.h>
+# include <strings.h>
 
-
+# include <unistd.h>// esta es para el sleep
 
 #define PORT 3141
 #define BACKLOG 32
+int isFull();
 
 int main(){
 
-	int serverId,clienteId,r,opt = 1;
+	int serverId,clienteId,r,opt = 1, users=0,status;
 	struct sockaddr_in server, client;
-	socklen_t tamano;
+	socklen_t tamano=0;
+	pid_t pid, end;
+	
 	
 	serverId=socket(AF_INET,SOCK_STREAM,0);
 	if(serverId<0){
@@ -41,5 +47,78 @@ int main(){
 		perror("\nError en listen():\n");
 		exit(-1);
 	}
-
+	while(isFull(users)){
+		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
+		if(clienteId<0)
+		{
+			perror("\n Error en accept: \n");
+			exit(-1);
+		}
+		pid =fork();
+		if ( pid < 0 ){
+			perror("\n Error en fork: ");
+			exit(-1);
+		}
+		if(pid==0){ //Somos hijos
+			printf("soy el hijo # %i ",users);
+			r = send(clienteId, "hola mundo", 10, 0);
+                        if(r < 0){
+                               perror("\n-->Error en send(): ");
+                               exit(-1);
+                        }
+                        sleep(1000);
+			close(clienteId);
+	                close(serverId);
+	                exit(0);
+		}else{	//soy el padre
+			users++;
+		//	do{
+			end=waitpid(-1,&status,WUNTRACED|WNOHANG |WCONTINUED); // aca espera al hijo para continuar
+			if(end==-1){
+				perror("\nError al esperar al hijo \n");
+				exit(-1);
+			}
+		//	}while(end==0);
+			printf("usuarios %i",users);
+			if(end > 0){
+			if (WIFEXITED(status))
+			      printf("\nChild ended normally\n");
+                	 else if (WIFSIGNALED(status))
+                              printf("Child ended because of an uncaught signal\n");
+                      	 else if (WIFSTOPPED(status))
+                              printf("Child process has stopped\n");
+                       printf("Usuarios %i",users);
+                        users--;
+                        }
+                        
+                }
+        }
+        printf("\nEl servidor esta lleno se va adios :");
+        while (users > 0){
+        end=wait(&status);
+        if(end==-1){
+           perror("\nError al esperar al hijo \n");
+           exit(-1);
+         }
+        if(end > 0){
+        if (WIFEXITED(status))
+        printf("\nChild ended normally\n");
+        else if (WIFSIGNALED(status))
+        printf("Child ended because of an uncaught signal\n");
+        else if (WIFSTOPPED(status))
+        printf("Child process has stopped\n");
+        printf("Usuarios %i",users);
+        users--;
+        }
+        }
+        close(clienteId);
+        close(serverId);
 }
+int isFull(int users){
+        if(users==BACKLOG){
+              return 0;		//para parar el while
+        }else{
+              return 1; 	//para continuar el while
+        }
+ }
+

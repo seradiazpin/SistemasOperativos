@@ -6,7 +6,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define PORT 3535
+#define PORT 3141
 
 
 int main(int argc, char *argv[])
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     struct hostent *he;
     char buffer[32];
     
-    printf("LOLLLL\n");
+
     clientfd = socket(AF_INET, SOCK_STREAM, 0);
     
     if(clientfd < 0){
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     client.sin_port = htons(PORT);
     
     inet_aton(argv[1], &client.sin_addr);
-    printf("LOLLLL1\n");
+
     r = connect(clientfd, (struct sockaddr *)&client, (socklen_t)sizeof(struct sockaddr));
     if(r < 0){
         perror("\n-->Error en connect(): ");

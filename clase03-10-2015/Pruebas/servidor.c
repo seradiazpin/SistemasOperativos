@@ -8,7 +8,6 @@
 
 #define PORT 3535
 #define BACKLOG 5
-#define FULL 1
 
 /*
 #include <netinet/in.h>
@@ -32,18 +31,17 @@ int main(){
     socklen_t tamano = 0;
     pid_t pid;
 
-        
     serverfd = socket(AF_INET, SOCK_STREAM, 0);
     if(serverfd < 0){
         perror("\n-->Error en socket():");
         exit(-1);
     }
-    
+
     server.sin_family = AF_INET;
     server.sin_port = htons(PORT);
     server.sin_addr.s_addr = INADDR_ANY;
     bzero(server.sin_zero, 8); 
-    
+
     setsockopt(serverfd,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int));
 
     r = bind(serverfd, (struct sockaddr *)&server, sizeof(struct sockaddr));
@@ -51,7 +49,7 @@ int main(){
         perror("\n-->Error en bind(): ");
         exit(-1);
     }
-    
+
     r = listen(serverfd, BACKLOG);
     if(r < 0){
         perror("\n-->Error en Listen(): ");
@@ -60,7 +58,7 @@ int main(){
 
     static int users = 0;
 
-    while (isFull != FULL)
+    while (!isFull)
    	{
 	    clientfd = accept(serverfd, (struct sockaddr *)&client, &tamano); //accept es una funcion bloquenate se queda esperando a que alguien se conencte
 	    if(clientfd < 0)
@@ -68,13 +66,12 @@ int main(){
 	        perror("\n-->Error en accept: ");
 	        exit(-1);
 	    }
-	       
+
 	    pid = fork();
 	    if (pid < 0){
 	         perror("ERROR on fork");
 	         exit(1);
 	    }
-	      
 	    if (pid == 0){
 	            r = send(clientfd, "hola mundo", 10, 0);
 	            users++;
@@ -89,15 +86,14 @@ int main(){
 	    	 users++;
 	         printf("Users:%i\n",users);
 	         close(clientfd);
-	         
+
 	         if(users > BACKLOG){
 	         	isFull = 1;
 	         }
-			
-	    }
+    }
 
-   } 
-    
-    close(client);   
-    close(serverfd);    
+   }
+
+    close(client);
+    close(serverfd);
 }

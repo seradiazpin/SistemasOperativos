@@ -26,7 +26,7 @@ struct in_addr {
 */
 int main(){
 
-    int serverfd, clientfd, r, opt = 1,isFull = 0;
+    int serverfd, clientfd, r, opt = 1,isFull = 0, direccion;
     struct sockaddr_in server, client;
     socklen_t tamano = 0;
     pid_t pid;
@@ -84,7 +84,9 @@ int main(){
 
 	    }else{
 	    	 users++;
-	         printf("Users:%i\n",users);
+	    	 direccion=getpeername(serverfd, (struct sockaddr *)&client,&tamano);
+	         printf("Users:%i %i\n",users,direccion);
+	         fprintf(stderr, "listening on %s:%d\n", inet_ntoa(client.sin_addr),ntohs(client.sin_port));
 	         close(clientfd);
 
 	         if(users > BACKLOG){

@@ -10,7 +10,7 @@
 
 # include <unistd.h>// esta es para el sleep
 
-#define PORT 3141
+#define PORT 9510
 #define BACKLOG 32
 
 struct dogType
@@ -23,8 +23,15 @@ struct dogType
        char  sexo;
 };
 
+FILE *file, *dogLog;
+
+
 int isFull();
 int crear();
+FILE* openFile();
+void closeFile();
+void atenderCliente(); 
+
 
 int main(){
 
@@ -57,7 +64,7 @@ int main(){
                                exit(-1);
                         }
                         //atender usuario
-                        
+                        atenderCliente(clienteId);
                         
 			close(clienteId);
 	                close(serverId);
@@ -142,3 +149,39 @@ int crear(){
 }
 
 
+FILE * openFile(char *nombre){  //metodo para abrir los archivos
+	file= fopen(nombre,"a+");
+	if(file==NULL){
+		perror ("\nError al abrir el archivo para escritura");
+		exit(-1);
+	}else{
+		return file;
+	}
+
+}
+
+void closeFile(FILE  *file){   //metodo para cerrar los archivos
+	if(!fclose(file)==0){
+		perror("\nError al cerrar el archivo");
+		exit(-1);
+	}
+}
+
+void atenderCliente(int clientId){
+	int r,opc;
+	r= recv(clientId,&opc,sizeof(int),0);
+	if(r<0){
+		perror("\n Error al recibir solicitud");
+		exit(-1);
+	}
+	switch(opc){
+		case 1 : printf("Ingresar");break;
+		case 2 : printf("Leer");break;
+		case 3 : printf("Borrar");break;
+		case 4 : printf("Buscar");break;
+		default : perror ("Opcion invalida");
+			break;
+	}
+
+
+}

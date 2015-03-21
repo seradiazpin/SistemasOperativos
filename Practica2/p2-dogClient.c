@@ -9,7 +9,7 @@
 
 
 
-#define PORT 3141
+#define PORT 9510
 
 struct dogType
 {
@@ -40,7 +40,7 @@ int main( int argc,char *argv[]){
 	r=recv(clienteId,buffer,32,0);
 	buffer[r]=0;
 	printf("\n Mensaje recibido: %s",buffer);
-	menu();
+	menu(clienteId);
 	close(clienteId);
 
 }
@@ -95,7 +95,8 @@ void imprimirPerro(void *ap){
         printf("\n sexo: %c",perros->sexo);
         printf("\n");
 }
-void menu(){
+void menu(int clientId){
+int r,i;
 char opcion = ' ';
         do{
 		printf("\tMASCOTAS\n");
@@ -111,15 +112,23 @@ char opcion = ' ';
                 switch(opcion){
 	                case('1'):
           //                      ingresar();
+          		i=1;
+ 			r=send(clientId,&i,sizeof(int),0);
                                 break;
 			case('2'):
           //                     leer();
+	          	i=2;
+       			r=send(clientId,&i,sizeof(int),0);
                                 break;
                         case('3'):
           //                      borrar();
+          		i=3;
+ 			r=send(clientId,&i,sizeof(int),0);
                                 break;
                         case('4'):
           //                      buscar();
+          		i=4;
+ 			r=send(clientId,&i,sizeof(int),0);
                                 break;
                         case('5'):
                                 opcion='5';
@@ -132,6 +141,10 @@ char opcion = ' ';
                 }
                 while(getchar()!='\n');
                 system("clear");
+                if(r<0){
+                perror("Error en send: ");
+                exit(-1);
+                }
          }while( opcion != '5');
 }
 

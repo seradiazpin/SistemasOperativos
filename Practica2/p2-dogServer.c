@@ -13,14 +13,15 @@
 #define PORT 9510
 #define BACKLOG 32
 
+
 struct dogType
 {
-       char nombre[32];
-       int edad;
-       char raza[16];
-       int estatura;
-       float peso;
-       char  sexo;
+   char nombre[32];
+   int edad;
+   char raza[16];
+   int estatura;
+   float peso;
+   char  sexo;
 };
 
 FILE *file, *dogLog;
@@ -31,12 +32,16 @@ int crear();
 FILE* openFile();
 void closeFile();
 void atenderCliente(); 
+void ingresar();
+void cargar();
+void imprimirPerro();
 
 
 int main(){
 
 	int serverId,clienteId,r, users=0,status;
 	struct sockaddr_in  client;
+	
 	socklen_t tamano=0;
 	pid_t pid, end; // identificador de procesos
 	char buffer[32]; // prueba de funcionamiento
@@ -56,16 +61,16 @@ int main(){
 		if(pid==0){ //Somos hijos
 			printf("soy el hijo # %i ",users);
 			r=recv(clienteId,buffer,32,0 );
-			buffer[r]=0;
-			printf("\n Mensaje recibido %s",buffer);
+			buffer[r]= 0;
+			printf("\n Mensaje recibido %s ",buffer);
 			r = send(clienteId, "hola mundo", 10, 0);
-                        if(r < 0){
-                               perror("\n-->Error en send(): ");
-                               exit(-1);
-                        }
-                        //atender usuario
-                        atenderCliente(clienteId);
-                        
+	                    if(r < 0){
+	                           perror("\n-->Error en send(): ");
+	                           exit(-1);
+	                    }
+	        //atender usuario
+	        atenderCliente(clienteId);
+	                    
 			close(clienteId);
 	                close(serverId);
 	                exit(0);
@@ -82,44 +87,45 @@ int main(){
 			if(end > 0){
 			if (WIFEXITED(status))
 			      printf("\nChild ended normally\n");
-                	 else if (WIFSIGNALED(status))
-                              printf("Child ended because of an uncaught signal\n");
-                      	 else if (WIFSTOPPED(status))
-                              printf("Child process has stopped\n");
-                       printf("Usuarios %i",users);
-                        users--;
-                        }
-                        
-                }
-        }
-        printf("\nEl servidor esta lleno se va adios :");
-        while (users > 0){
-        end=wait(&status);
-        if(end==-1){
-           perror("\nError al esperar al hijo \n");
-           exit(-1);
-         }
-        if(end > 0){
-        if (WIFEXITED(status))
-        printf("\nChild ended normally\n");
-        else if (WIFSIGNALED(status))
-        printf("Child ended because of an uncaught signal\n");
-        else if (WIFSTOPPED(status))
-        printf("Child process has stopped\n");
-        printf("Usuarios %i",users);
-        users--;
-        }
-        }
-        close(clienteId);
-        close(serverId);
+	            	 else if (WIFSIGNALED(status))
+	                          printf("Child ended because of an uncaught signal\n");
+	                  	 else if (WIFSTOPPED(status))
+	                          printf("Child process has stopped\n");
+	                   printf("Usuarios %i",users);
+	                    users--;
+	                    }
+	                    
+	            }
+	    }
+	    printf("\nEl servidor esta lleno se va adios :");
+	    while (users > 0){
+	    end=wait(&status);
+	    if(end==-1){
+	       perror("\nError al esperar al hijo \n");
+	       exit(-1);
+	     }
+	    if(end > 0){
+	    if (WIFEXITED(status))
+	    printf("\nChild ended normally\n");
+	    else if (WIFSIGNALED(status))
+	    printf("Child ended because of an uncaught signal\n");
+	    else if (WIFSTOPPED(status))
+	    printf("Child process has stopped\n");
+	    printf("Usuarios %i",users);
+	    users--;
+	    }
+	    }
+	    close(clienteId);
+	    close(serverId);
 }
+
 int isFull(int users){
-        if(users==BACKLOG){
-              return 0;		//para parar el while
-        }else{
-              return 1; 	//para continuar el while
-        }
- }
+    if(users==BACKLOG){
+          return 0;		//para parar el while
+    }else{
+          return 1; 	//para continuar el while
+    }
+}
 
 int crear(){
 	printf("entro en crear");
@@ -148,6 +154,100 @@ int crear(){
 	return serverId;
 }
 
+void atenderCliente(int clientId){
+	int r,opc;
+	struct dogType *in;
+	r= recv(clientId,&opc,sizeof(int),0);
+	if(r<0){
+		perror("\n Error al recibir solicitud");
+		exit(-1);
+	}
+	switch(opc){
+		case 1 :
+		ingresar(in,clientId,r);
+
+
+		break;
+
+		case 2 : printf("Leer");break;
+		case 3 : printf("Borrar");break;
+		case 4 : printf("Buscar");break;
+		default : perror ("Opcion invalida");
+			break;
+	}
+}
+
+void ingresar(void* ingre,int clientId,int r){
+	struct dogType *perros;
+	perros = ingre;
+	printf("\n----------Ingresar Registro----------\n");
+	
+	perros = malloc(sizeof(struct dogType));
+	cargar(perros,r);
+	imprimirPerro(perros);
+	file=openFile("dataDogs.dat");
+	int data = fwrite(perros,sizeof(struct dogType),1,file);
+	if(data<=0){
+		perror("Error de escritura");
+	}
+	printf("Archivo end\n");
+	closeFile(file);
+	free(perros);
+
+}
+
+void cargar(void *ap ,int clientId,int r){
+  struct dogType *ingreso;
+  ingreso = ap;
+  char nombre[32];
+  int edad;
+  char raza[16];
+  int estatura;
+  float peso;
+  char  sexo;
+
+  printf("\n Nombre: ");
+  //scanf( " %31[^\n]",ingreso->nombre);
+  r = recv(clientId,ingreso->nombre,32,0);
+  nombre[r]=0;
+  //ingreso->nombre = nombre;
+  printf("\n Edad: ");
+  //scanf(" %d",&ingreso->edad);
+  r = recv(clientId,&ingreso->edad,sizeof(int),0);
+   //= edad;
+  //printf("\n Edad: %i",edad);
+  printf("\n Raza: ");
+  //scanf(" %15[^\n]",ingreso->raza);
+  r = recv(clientId,ingreso->raza,16,0);
+  printf("\n Estatura: ");
+  //scanf(" %i",&ingreso->estatura);
+  r = recv(clientId,&estatura,sizeof(int),0);
+  ingreso->estatura = estatura;
+  printf("\n Peso: ");
+  //scanf(" %f",&ingreso->peso);
+  r = recv(clientId,&peso,sizeof(float),0);
+  ingreso->peso = peso;
+  printf("\n Sexo M/H: ");
+  //scanf(" %c",&ingreso->sexo);
+  r = recv(clientId,&sexo,sizeof(char),0);
+  ingreso->sexo = sexo;
+    printf("\n");
+
+}
+
+void imprimirPerro(void *ap){
+	struct dogType *perros;
+	perros = ap;
+	printf("\n Nombre: %s",perros->nombre);
+	printf("\n Edad: %i",perros->edad);
+	printf("\n Raza: %s",perros->raza);
+	printf("\n Estatura: %i",perros->estatura);
+	printf("\n Peso: %3.2f",perros->peso);
+	printf("\n sexo: %c",perros->sexo);
+	printf("\n");	
+}
+
+
 
 FILE * openFile(char *nombre){  //metodo para abrir los archivos
 	file= fopen(nombre,"a+");
@@ -157,7 +257,6 @@ FILE * openFile(char *nombre){  //metodo para abrir los archivos
 	}else{
 		return file;
 	}
-
 }
 
 void closeFile(FILE  *file){   //metodo para cerrar los archivos
@@ -165,23 +264,4 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
-}
-
-void atenderCliente(int clientId){
-	int r,opc;
-	r= recv(clientId,&opc,sizeof(int),0);
-	if(r<0){
-		perror("\n Error al recibir solicitud");
-		exit(-1);
-	}
-	switch(opc){
-		case 1 : printf("Ingresar");break;
-		case 2 : printf("Leer");break;
-		case 3 : printf("Borrar");break;
-		case 4 : printf("Buscar");break;
-		default : perror ("Opcion invalida");
-			break;
-	}
-
-
 }

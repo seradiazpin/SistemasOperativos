@@ -253,7 +253,7 @@ void leer(int clientId,int r){
 	//printf("Opcion %i\n",opcion );
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct dogType),1,file);
-		sendPerro(lectura,clientId,r);
+		sendPerro(lectura,clientId);
 		
 	}else{
 		printf("\nNo se encontro\n");
@@ -342,7 +342,7 @@ void sendPerro(void *ap,int clientId){
   struct dogType *lectura;
   lectura = ap;
   int r, tam;
-  tam=tamano(nombre);
+  tam=tamano(lectura->nombre);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
   perror("error en send tam nombre");
@@ -358,7 +358,7 @@ void sendPerro(void *ap,int clientId){
     perror("error en send edad");
     exit(-1);
   }
-  tam=tamano(raza);
+  tam=tamano(lectura->raza);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
     perror("error en send tam raza");
@@ -385,3 +385,10 @@ void sendPerro(void *ap,int clientId){
     exit(-1);
   }
 }
+int  tamano(char palabra[]){
+	int i=0;
+	while(palabra[i]!='\0')
+	i++;
+	return i;
+}
+

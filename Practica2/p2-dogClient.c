@@ -225,7 +225,104 @@ void menu(int clientId){
   }while( opcion != '5');
 
 }
-
+void recvPerro(void *ap, int clientId){
+    struct dogType *lectura;
+    lectura = ap;
+    int r, tam;
+    r= recv(clientId,&tam,sizeof(tam),0);
+    if(r<0){
+      perror("Error recv tamano nombre");
+      exit(-1);
+    }
+    r = recv(clientId,lectura->nombre,tam,0);
+    if(r<0){
+  	perror("Error recv nombre");
+  	exit(-1);
+    }
+    r = recv(clientId,&lectura->edad,sizeof(int),0);
+    if(r<0){
+          perror("Error recv edad");
+          exit(-1);
+    }
+    r= recv(clientId,&tam,sizeof(int),0);
+    if(r<0){
+        perror("Error recv tam raza");
+        exit(-1);
+    }
+    r = recv(clientId,lectura->raza,tam,0);
+    if(r<0){
+         perror("Error recv raza");
+         exit(-1);
+    }
+    r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    if(r<0){
+        perror("Error recv estatura");
+        exit(-1);
+    }
+    r = recv(clientId,&lectura->peso,sizeof(float),0);
+    if(r<0){
+           perror("Error recv peso");
+           exit(-1);
+    }
+    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+    if(r<0){
+            perror("Error recv sexo");
+                    exit(-1);
+    }
+}
+void sendPerro(void *ap,int clientId){
+  struct dogType *lectura;
+  lectura = ap;
+  int r, tam;
+  tam=tamano(lectura->nombre);
+  r=send(clientId,&tam,sizeof(int),0);
+  if(r<0){
+  perror("error en send tam nombre");
+  exit(-1);
+  }
+  r=send(clientId,lectura->nombre,tam,0);
+  if(r<0){
+    perror("error en send nombre");
+    exit(-1);
+  }
+  r=send(clientId,&lectura->edad,sizeof(int),0);
+  if(r<0){
+    perror("error en send edad");
+    exit(-1);
+  }
+  tam=tamano(lectura->raza);
+  r=send(clientId,&tam,sizeof(int),0);
+  if(r<0){
+    perror("error en send tam raza");
+    exit(-1);
+  }
+  r=send(clientId,lectura->raza,tam,0);
+  if(r<0){
+     perror("error en send raza");
+     exit(-1);
+  }
+  r=send(clientId,&lectura->estatura,sizeof(int),0);
+  if(r<0){
+    perror("error en send estatura");
+    exit(-1);
+  }
+  r=send(clientId,&lectura->peso,sizeof(float),0);
+  if(r<0){
+     perror("error en send peso");
+     exit(-1);
+  }
+  r=send(clientId,&lectura->sexo,sizeof(char),0);
+  if(r<0){
+    perror("error en send sexo");
+    exit(-1);
+  }
+}
+int  tamano(char palabra[]){
+	int i=0;
+	while(palabra[i]!='\0')
+	i++;
+	return i;
+}
 
 
 

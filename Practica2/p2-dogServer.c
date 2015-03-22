@@ -221,16 +221,13 @@ void cargar(void *ap ,int clientId,int r){
   r = recv(clientId,ingreso->raza,16,0);
   printf("\n Estatura: ");
   //scanf(" %i",&ingreso->estatura);
-  r = recv(clientId,&estatura,sizeof(int),0);
-  ingreso->estatura = estatura;
+  r = recv(clientId,&ingreso->estatura,sizeof(int),0);
   printf("\n Peso: ");
   //scanf(" %f",&ingreso->peso);
-  r = recv(clientId,&peso,sizeof(float),0);
-  ingreso->peso = peso;
+  r = recv(clientId,&ingreso->peso,sizeof(float),0);
   printf("\n Sexo M/H: ");
   //scanf(" %c",&ingreso->sexo);
-  r = recv(clientId,&sexo,sizeof(char),0);
-  ingreso->sexo = sexo;
+  r = recv(clientId,&ingreso->sexo,sizeof(char),0);
     printf("\n");
 
 }

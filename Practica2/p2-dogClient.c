@@ -130,6 +130,40 @@ void imprimirPerro(void *ap){
 }
 
 
+
+void leer(int clientId,int r){
+  struct dogType *lectura;
+  char nombre[32];
+ 
+  int numeroRegistros = 0;
+  long tamano=sizeof(struct dogType);
+  lectura = malloc(tamano);
+  r = recv(clientId,&numeroRegistros,sizeof(int),0);
+  int opcion = 0;
+  do{
+    printf("\n----------Leer Registro---------- ");
+    printf("\nPerros registrados: %i  Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
+    printf("\nRegistro:\t ");   
+    scanf("%d",&opcion);  
+    if(opcion<0 || opcion >= numeroRegistros){
+      printf("Introdusca un registro correcto\n");
+    }
+    r = send(clientId,&opcion, sizeof(int), 0);
+  }while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+    int tamNom ;
+    r = recv(clientId,&tamNom,sizeof(unsigned long),0);
+    r = recv(clientId,lectura->nombre,32,0);
+    r = recv(clientId,&lectura->edad,sizeof(int),0);
+    r = recv(clientId,lectura->raza,16,0);
+    r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    r = recv(clientId,&lectura->peso,sizeof(float),0);
+    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+    imprimirPerro(lectura);
+  free(lectura);
+  confirmar();
+}
+
+
 void menu(int clientId){
   int r,i;
   struct dogType perros;
@@ -156,7 +190,9 @@ void menu(int clientId){
         case('2'):
                 //                     leer();
         i=2;
+
         r=send(clientId,&i,sizeof(int),0);
+        leer(clientId,r);
         break;
         case('3'):
                 //                      borrar();

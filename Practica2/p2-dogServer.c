@@ -35,6 +35,7 @@ void atenderCliente();
 void ingresar();
 void cargar();
 void imprimirPerro();
+void leer();
 
 
 int main(){
@@ -64,16 +65,16 @@ int main(){
 			buffer[r]= 0;
 			printf("\n Mensaje recibido %s ",buffer);
 			r = send(clienteId, "hola mundo", 10, 0);
-	                    if(r < 0){
-	                           perror("\n-->Error en send(): ");
-	                           exit(-1);
-	                    }
+            if(r < 0){
+                   perror("\n-->Error en send(): ");
+                   exit(-1);
+            }
 	        //atender usuario
 	        atenderCliente(clienteId);
 	                    
 			close(clienteId);
-	                close(serverId);
-	                exit(0);
+	        close(serverId);
+	        exit(0);
 		}else{	//soy el padre
 			users++;
 		//	do{
@@ -85,35 +86,35 @@ int main(){
 		//	}while(end==0);
 			printf("usuarios %i",users);
 			if(end > 0){
-			if (WIFEXITED(status))
-			      printf("\nChild ended normally\n");
-	            	 else if (WIFSIGNALED(status))
-	                          printf("Child ended because of an uncaught signal\n");
-	                  	 else if (WIFSTOPPED(status))
-	                          printf("Child process has stopped\n");
-	                   printf("Usuarios %i",users);
-	                    users--;
-	                    }
+				if (WIFEXITED(status))
+				    printf("\nChild ended normally\n");
+		        else if (WIFSIGNALED(status))
+		            printf("Child ended because of an uncaught signal\n");
+		        else if (WIFSTOPPED(status))
+		            printf("Child process has stopped\n");
+		            printf("Usuarios %i",users);
+		       	users--;
+	        }
 	                    
-	            }
+	    }
 	    }
 	    printf("\nEl servidor esta lleno se va adios :");
 	    while (users > 0){
-	    end=wait(&status);
-	    if(end==-1){
-	       perror("\nError al esperar al hijo \n");
-	       exit(-1);
-	     }
-	    if(end > 0){
-	    if (WIFEXITED(status))
-	    printf("\nChild ended normally\n");
-	    else if (WIFSIGNALED(status))
-	    printf("Child ended because of an uncaught signal\n");
-	    else if (WIFSTOPPED(status))
-	    printf("Child process has stopped\n");
-	    printf("Usuarios %i",users);
-	    users--;
-	    }
+		    end=wait(&status);
+		    if(end==-1){
+		       perror("\nError al esperar al hijo \n");
+		       exit(-1);
+		    }
+		    if(end > 0){
+			    if (WIFEXITED(status))
+			    printf("\nChild ended normally\n");
+			    else if (WIFSIGNALED(status))
+			    printf("Child ended because of an uncaught signal\n");
+			    else if (WIFSTOPPED(status))
+			    printf("Child process has stopped\n");
+			    printf("Usuarios %i",users);
+			    users--;
+		    }
 	    }
 	    close(clienteId);
 	    close(serverId);
@@ -155,6 +156,8 @@ int crear(){
 }
 
 void atenderCliente(int clientId){
+	
+	printf("Entro en ingresar\n");
 	int r,opc;
 	struct dogType *in;
 	r= recv(clientId,&opc,sizeof(int),0);
@@ -165,11 +168,11 @@ void atenderCliente(int clientId){
 	switch(opc){
 		case 1 :
 		ingresar(in,clientId,r);
-
-
 		break;
 
-		case 2 : printf("Leer");break;
+		case 2 : 
+		leer(clientId,r);
+		break;
 		case 3 : printf("Borrar");break;
 		case 4 : printf("Buscar");break;
 		default : perror ("Opcion invalida");
@@ -230,6 +233,37 @@ void cargar(void *ap ,int clientId,int r){
   r = recv(clientId,&ingreso->sexo,sizeof(char),0);
     printf("\n");
 
+}
+
+void leer(int clientId,int r){
+	
+	int numeroRegistros = 0;
+	struct dogType *lectura;
+	long tamano=sizeof(struct dogType);
+	lectura = malloc(tamano);
+	file=openFile("dataDogs.dat");
+	fseek(file, 0, SEEK_END);
+	numeroRegistros = ftell(file)/tamano;
+	//printf("numeroRegistros%i\n",numeroRegistros);
+	r = send(clientId,&numeroRegistros, sizeof(long), 0);
+	int opcion = 0;
+	r = recv(clientId,&opcion,sizeof(char),0);
+	//printf("Opcion %i\n",opcion );
+	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
+		fread(lectura,sizeof(struct dogType),1,file);
+		r=send(clientId,strlen(lectura->nombre),sizeof(unsigned long),0);
+		r=send(clientId,lectura->nombre,32,0);
+		r=send(clientId,&lectura->edad,sizeof(int),0);
+		r=send(clientId,lectura->raza,16,0);
+		r=send(clientId,&lectura->estatura,sizeof(int),0);
+		r=send(clientId,&lectura->peso,sizeof(float),0);
+		r=send(clientId,&lectura->sexo,sizeof(char),0);
+		
+	}else{
+		printf("\nNo se encontro\n");
+	}
+	closeFile(file);
+	free(lectura);
 }
 
 void imprimirPerro(void *ap){

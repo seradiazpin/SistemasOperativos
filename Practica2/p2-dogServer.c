@@ -36,6 +36,8 @@ void ingresar();
 void cargar();
 void imprimirPerro();
 void leer();
+void sendPerro();
+void recvPerro();
 
 
 int main(){
@@ -251,13 +253,7 @@ void leer(int clientId,int r){
 	//printf("Opcion %i\n",opcion );
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct dogType),1,file);
-		r=send(clientId,strlen(lectura->nombre),sizeof(unsigned long),0);
-		r=send(clientId,lectura->nombre,32,0);
-		r=send(clientId,&lectura->edad,sizeof(int),0);
-		r=send(clientId,lectura->raza,16,0);
-		r=send(clientId,&lectura->estatura,sizeof(int),0);
-		r=send(clientId,&lectura->peso,sizeof(float),0);
-		r=send(clientId,&lectura->sexo,sizeof(char),0);
+		sendPerro(lectura,clientId,r);
 		
 	}else{
 		printf("\nNo se encontro\n");
@@ -295,4 +291,25 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
+}
+
+void recvPerro(void *ap, int clientId,int r){
+    struct dogType *lectura;
+    lectura = ap;
+    r = recv(clientId,lectura->nombre,32,0);
+    r = recv(clientId,&lectura->edad,sizeof(int),0);
+    r = recv(clientId,lectura->raza,16,0);
+    r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    r = recv(clientId,&lectura->peso,sizeof(float),0);
+    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+}
+void sendPerro(void *ap,int clientId,int r){
+  struct dogType *lectura;
+  lectura = ap;
+  r=send(clientId,lectura->nombre,32,0);
+  r=send(clientId,&lectura->edad,sizeof(int),0);
+  r=send(clientId,lectura->raza,16,0);
+  r=send(clientId,&lectura->estatura,sizeof(int),0);
+  r=send(clientId,&lectura->peso,sizeof(float),0);
+  r=send(clientId,&lectura->sexo,sizeof(char),0);
 }

@@ -8,7 +8,7 @@
 # include <arpa/inet.h>
 # include <strings.h>
 
-# include <unistd.h>// esta es para el sleep
+
 
 #define PORT 9510
 #define BACKLOG 32
@@ -293,23 +293,95 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 	}
 }
 
-void recvPerro(void *ap, int clientId,int r){
+void recvPerro(void *ap, int clientId){
     struct dogType *lectura;
     lectura = ap;
-    r = recv(clientId,lectura->nombre,32,0);
+    int r, tam;
+    r= recv(clientId,&tam,sizeof(tam),0);
+    if(r<0){
+      perror("Error recv tamano nombre");
+      exit(-1);
+    }
+    r = recv(clientId,lectura->nombre,tam,0);
+    if(r<0){
+  	perror("Error recv nombre");
+  	exit(-1);
+    }
     r = recv(clientId,&lectura->edad,sizeof(int),0);
-    r = recv(clientId,lectura->raza,16,0);
+    if(r<0){
+          perror("Error recv edad");
+          exit(-1);
+    }
+    r= recv(clientId,&tam,sizeof(int),0);
+    if(r<0){
+        perror("Error recv tam raza");
+        exit(-1);
+    }
+    r = recv(clientId,lectura->raza,tam,0);
+    if(r<0){
+         perror("Error recv raza");
+         exit(-1);
+    }
     r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    if(r<0){
+        perror("Error recv estatura");
+        exit(-1);
+    }
     r = recv(clientId,&lectura->peso,sizeof(float),0);
+    if(r<0){
+           perror("Error recv peso");
+           exit(-1);
+    }
     r = recv(clientId,&lectura->sexo,sizeof(char),0);
+    if(r<0){
+            perror("Error recv sexo");
+                    exit(-1);
+    }
 }
-void sendPerro(void *ap,int clientId,int r){
+void sendPerro(void *ap,int clientId){
   struct dogType *lectura;
   lectura = ap;
-  r=send(clientId,lectura->nombre,32,0);
+  int r, tam;
+  tam=tamano(nombre);
+  r=send(clientId,&tam,sizeof(int),0);
+  if(r<0){
+  perror("error en send tam nombre");
+  exit(-1);
+  }
+  r=send(clientId,lectura->nombre,tam,0);
+  if(r<0){
+    perror("error en send nombre");
+    exit(-1);
+  }
   r=send(clientId,&lectura->edad,sizeof(int),0);
-  r=send(clientId,lectura->raza,16,0);
+  if(r<0){
+    perror("error en send edad");
+    exit(-1);
+  }
+  tam=tamano(raza);
+  r=send(clientId,&tam,sizeof(int),0);
+  if(r<0){
+    perror("error en send tam raza");
+    exit(-1);
+  }
+  r=send(clientId,lectura->raza,tam,0);
+  if(r<0){
+     perror("error en send raza");
+     exit(-1);
+  }
   r=send(clientId,&lectura->estatura,sizeof(int),0);
+  if(r<0){
+    perror("error en send estatura");
+    exit(-1);
+  }
   r=send(clientId,&lectura->peso,sizeof(float),0);
+  if(r<0){
+     perror("error en send peso");
+     exit(-1);
+  }
   r=send(clientId,&lectura->sexo,sizeof(char),0);
+  if(r<0){
+    perror("error en send sexo");
+    exit(-1);
+  }
 }

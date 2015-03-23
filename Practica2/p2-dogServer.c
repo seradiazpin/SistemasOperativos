@@ -45,7 +45,7 @@ int tamano();
 
 int main(){
 
-	int serverId,clienteId,r,status,shmId;
+	int serverId,clienteId,r,status,shmId,userTmp;
 	struct sockaddr_in  client;
 	socklen_t tamano=0;
 	key_t key=1234,keyU=3232;
@@ -96,8 +96,20 @@ int main(){
 	        	close(serverId);
 	        	exit(0);
 		}else{	//soy el padre
+			if(*users<userTmp){
+			    int dead=0;
+			    while(dead<userTmp-*users){
+			    end=wait(&status);
+			    if(end==-1){
+			       perror("\nError al esperar al hijo \n");
+			       exit(-1);
+			    }
+			    dead++;
+			    }			
+			}
 			*users=*users+1;
 			printf("\nusuarios padre%i",*users);
+			userTmp=*users;
 	                    
 	    }
 	    }

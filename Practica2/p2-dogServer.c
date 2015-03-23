@@ -252,7 +252,7 @@ void ingresar(void* ingre,int clientId){
 /*}*/
 
 void leer(int clientId){
-	
+	printf("Entro a leer");
 	int numeroRegistros = 0,r;
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
@@ -261,14 +261,20 @@ void leer(int clientId){
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
 	//printf("numeroRegistros%i\n",numeroRegistros);
-	r = send(clientId,&numeroRegistros, sizeof(long), 0);
+	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	if(r<0){
+		perror("error al mandar la cantidad de registros");
+		exit(-1);
+	}
 	int opcion = 0;
-	r = recv(clientId,&opcion,sizeof(char),0);
-	//printf("Opcion %i\n",opcion );
+	r = recv(clientId,&opcion,sizeof(int),0);
+	if(r<0){
+		perror("error al recibir el numero  del registro");
+		exit(-1);
+	}
+	printf("Opcion %i\n",opcion );
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
-		fread(lectura,sizeof(struct dogType),1,file);
 		sendPerro(lectura,clientId);
-		
 	}else{
 		printf("\nNo se encontro\n");
 	}
@@ -350,7 +356,7 @@ void recvPerro(void *ap, int clientId){
     struct dogType *recibiendo;
     recibiendo = ap;
     int r, tam;
-    r= recv(clientId,&tam,sizeof(tam),0);
+    r= recv(clientId,&tam,sizeof(int),0);
     if(r<0){
       perror("Error recv tamano nombre");
       exit(-1);

@@ -23,9 +23,9 @@ void imprimirPerro();
 int conectar();
 void confirmar();
 void ingresar();
-void leer();
 void recvPerro();
 void sendPerro();
+void leer();
 
 int main( int argc,char *argv[]){
   if(argv[1]==NULL){
@@ -222,53 +222,24 @@ void imprimirPerro(void *ap){
 
 
 
-void leer(int clientId){
-  int r;
-  struct dogType *lectura;
-  char nombre[32];
-  lectura=malloc(sizeof(struct dogType));
-  int numeroRegistros = 0;
-  r = recv(clientId,&numeroRegistros,sizeof(int),0);
-  if(r<0){
-  	perror("Error al recv cantidad de registros");
-  	exit(-1);
-  }
-  int opcion = 0;
-  do{
-    printf("\n----------Leer Registro---------- ");
-    printf("\nPerros registrados: %i  Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
-    printf("\nRegistro:\t ");   
-    scanf("%d",&opcion);  
-    if(opcion<0 || opcion >= numeroRegistros){
-      printf("Introdusca un registro correcto\n");
-    }
-    r = send(clientId,&opcion, sizeof(int), 0);
-     if(r<0){
-  	perror("Error al send numero de registro");
-  	exit(-1);
- 	}
-  }while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
-    recvPerro(lectura,clientId);
-    imprimirPerro(lectura);
-  free(lectura);
-  confirmar();
-}
+
 
 void recvPerro(void *ap, int clientId){
-    struct dogType *lectura;
-    lectura = ap;
+    printf("\nentro a recibir");
+    struct dogType *recibiendo;
+    recibiendo = ap;
     int r, tam;
-    r= recv(clientId,&tam,sizeof(tam),0);
+    r= recv(clientId,&tam,sizeof(int),0);
     if(r<0){
       perror("Error recv tamano nombre");
       exit(-1);
     }
-    r = recv(clientId,lectura->nombre,tam,0);
+    r = recv(clientId,recibiendo->nombre,tam,0);
     if(r<0){
   	perror("Error recv nombre");
   	exit(-1);
     }
-    r = recv(clientId,&lectura->edad,sizeof(int),0);
+    r = recv(clientId,&recibiendo->edad,sizeof(int),0);
     if(r<0){
           perror("Error recv edad");
           exit(-1);
@@ -278,26 +249,27 @@ void recvPerro(void *ap, int clientId){
         perror("Error recv tam raza");
         exit(-1);
     }
-    r = recv(clientId,lectura->raza,tam,0);
+    r = recv(clientId,recibiendo->raza,tam,0);
     if(r<0){
          perror("Error recv raza");
          exit(-1);
     }
-    r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    r = recv(clientId,&recibiendo->estatura,sizeof(int),0);
     if(r<0){
         perror("Error recv estatura");
         exit(-1);
     }
-    r = recv(clientId,&lectura->peso,sizeof(float),0);
+    r = recv(clientId,&recibiendo->peso,sizeof(float),0);
     if(r<0){
            perror("Error recv peso");
            exit(-1);
     }
-    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+    r = recv(clientId,&recibiendo->sexo,sizeof(char),0);
     if(r<0){
             perror("Error recv sexo");
                     exit(-1);
     }
+    imprimirPerro(recibiendo);
 }
 void sendPerro(void *ap,int clientId){
   struct dogType *lectura;
@@ -355,7 +327,36 @@ int  tamano(char palabra[]){
 
 
 
-
+void leer(int clientId){
+  int r;
+  struct dogType *lectura;
+  lectura=malloc(sizeof(struct dogType));
+  int numeroRegistros = 0;
+  r = recv(clientId,&numeroRegistros,sizeof(int),0);
+  if(r<0){
+  	perror("Error al recv cantidad de registros");
+  	exit(-1);
+  }
+  int opcion = 0;
+  do{
+    printf("\n----------Leer Registro---------- ");
+    printf("\nPerros registrados: %i  Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
+    printf("\nRegistro:\t ");   
+    scanf("%d",&opcion);  
+    if(opcion<0 || opcion >= numeroRegistros){
+      printf("Introdusca un registro correcto\n");
+    }
+    }while(( numeroRegistros != 0 )&& (opcion<0 || opcion >= numeroRegistros));
+    r = send(clientId,&opcion, sizeof(int), 0);
+     if(r<0){
+  	perror("Error al send numero de registro");
+  	exit(-1);
+ 	}
+	recvPerro(lectura,clientId);
+	imprimirPerro(lectura);
+	free(lectura);
+	confirmar();
+}
 
 
 

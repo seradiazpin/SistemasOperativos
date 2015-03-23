@@ -195,8 +195,6 @@ void ingresar(void* ingre,int clientId){
 	struct dogType *perros;
 	perros = ingre;
 	printf("\n----------Ingresar Registro----------\n");
-	
-	perros = malloc(sizeof(struct dogType));
 	cargar(perros,clientId);
 	imprimirPerro(perros);
 	do{
@@ -308,6 +306,7 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 void recvPerro(void *ap, int clientId){
     struct dogType *lectura;
     lectura = ap;
+     lectura = malloc(sizeof(struct dogType));
     int r, tam;
     r= recv(clientId,&tam,sizeof(tam),0);
     if(r<0){

@@ -21,6 +21,8 @@ void menu();
 void cargar();
 void imprimirPerro();
 int conectar();
+void sendPerro();
+void recvPerro();
 
 int main( int argc,char *argv[]){
 
@@ -93,27 +95,22 @@ void cargar(void *ap,int clientId,int r){
   char  sexo;
 
   printf("\n Nombre: ");
-  scanf( " %31[^\n]",nombre);
+  scanf( " %31[^\n]",ingreso->nombre);
   printf("\n Edad: ");
-  scanf(" %d",&edad);
+  scanf(" %d",&ingreso->edad);
   printf("\n Raza: ");
-  scanf(" %15[^\n]",raza);
+  scanf(" %15[^\n]",ingreso->raza);
   printf("\n Estatura: ");
-  scanf(" %i",&estatura);
+  scanf(" %i",&ingreso->estatura);
   printf("\n Peso: ");
-  scanf(" %f",&peso);
+  scanf(" %f",&ingreso->peso);
   do{
     printf("\n Sexo M/H: ");
-    scanf(" %c",&sexo);
+    scanf(" %c",&ingreso->sexo);
     printf("\n");
-  }while(!(sexo == 'M' || sexo == 'H'));
+  }while(!(ingreso->sexo == 'M' || ingreso->sexo == 'H'));
 
-  r=send(clientId,&nombre,32,0);
-  r=send(clientId,&edad,sizeof(int),0);
-  r=send(clientId,&raza,16,0);
-  r=send(clientId,&estatura,sizeof(int),0);
-  r=send(clientId,&peso,sizeof(float),0);
-  r=send(clientId,&sexo,sizeof(char),0);
+  sendPerro(ingreso,clientId,r);
 }
 
 
@@ -129,12 +126,32 @@ void imprimirPerro(void *ap){
   printf("\n");
 }
 
-
-
-void leer(int clientId,int r){
+void recvPerro(void *ap, int clientId,int r){
+    struct dogType *lectura;
+    lectura = ap;
+    r = recv(clientId,lectura->nombre,32,0);
+    r = recv(clientId,&lectura->edad,sizeof(int),0);
+    r = recv(clientId,lectura->raza,16,0);
+    r = recv(clientId,&lectura->estatura,sizeof(int),0);
+    r = recv(clientId,&lectura->peso,sizeof(float),0);
+    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+}
+void sendPerro(void *ap,int clientId,int r){
   struct dogType *lectura;
+  lectura = ap;
+  r=send(clientId,lectura->nombre,32,0);
+  r=send(clientId,&lectura->edad,sizeof(int),0);
+  r=send(clientId,lectura->raza,16,0);
+  r=send(clientId,&lectura->estatura,sizeof(int),0);
+  r=send(clientId,&lectura->peso,sizeof(float),0);
+  r=send(clientId,&lectura->sexo,sizeof(char),0);
+}
+
+
+
+void leer(int clientId, int r){
   char nombre[32];
- 
+  struct dogType *lectura;
   int numeroRegistros = 0;
   long tamano=sizeof(struct dogType);
   lectura = malloc(tamano);
@@ -152,15 +169,42 @@ void leer(int clientId,int r){
   }while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
     int tamNom ;
     r = recv(clientId,&tamNom,sizeof(unsigned long),0);
-    r = recv(clientId,lectura->nombre,32,0);
-    r = recv(clientId,&lectura->edad,sizeof(int),0);
-    r = recv(clientId,lectura->raza,16,0);
-    r = recv(clientId,&lectura->estatura,sizeof(int),0);
-    r = recv(clientId,&lectura->peso,sizeof(float),0);
-    r = recv(clientId,&lectura->sexo,sizeof(char),0);
+    recvPerro(lectura,clientId,r);
     imprimirPerro(lectura);
   free(lectura);
   confirmar();
+}
+
+void borrar(int clientId,int r){
+	
+	int found;
+	int numeroRegistros = 0;
+	struct dogType *perros;
+	long tamano=sizeof(struct dogType);
+	r = recv(clientId,&numeroRegistros,sizeof(int),0);
+	int opcion = 0;
+	do{
+		printf("\n----------Borrar Registro---------- ");
+		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
+		printf("\nRegistro que desea borrar:\t ");		
+		scanf("%d",&opcion);	
+		if(opcion<0 || opcion >= numeroRegistros){
+			printf("Introdusca un registro correcto\n");
+		}
+		r = send(clientId,&opcion, sizeof(int), 0);
+		r = recv(clientId,&found,sizeof(int),0);
+	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+
+	//r = recv(clientId,&found,sizeof(int),0);
+
+	printf("found %i\n",found );
+	if (! found) {
+		printf("No se encontro el registro n: %d\n\n", opcion);
+	}else{
+		printf("Registro borrado\n");
+	}
+	confirmar();
+
 }
 
 
@@ -198,6 +242,7 @@ void menu(int clientId){
                 //                      borrar();
         i=3;
         r=send(clientId,&i,sizeof(int),0);
+        borrar(clientId,r);
         break;
         case('4'):
                 //                      buscar();

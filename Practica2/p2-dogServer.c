@@ -35,7 +35,7 @@ FILE* openFile();
 void closeFile();
 void atenderCliente(); 
 void ingresar();
-void cargar();
+/*void cargar();*/
 void imprimirPerro();
 void leer();
 void sendPerro();
@@ -194,8 +194,9 @@ void atenderCliente(int clientId){
 void ingresar(void* ingre,int clientId){
 	struct dogType *perros;
 	perros = ingre;
+	perros= malloc(sizeof(struct dogType));
 	printf("\n----------Ingresar Registro----------\n");
-	cargar(perros,clientId);
+	recvPerro(perros,clientId);
 	imprimirPerro(perros);
 	do{
 	if(*writeFile==0){
@@ -216,10 +217,10 @@ void ingresar(void* ingre,int clientId){
 
 }
 
-void cargar(void *ap ,int clientId){
+/*void cargar(void *ap ,int clientId){*/
 /*  	struct dogType *ingreso;*/
 /*  	ingreso = ap; 	*/
-	recvPerro(ap,clientId);
+/*	recvPerro(ap,clientId);*/
 /*  printf("\n Nombre: ");*/
 /*  //scanf( " %31[^\n]",ingreso->nombre);*/
 /*  r = recv(clientId,ingreso->nombre,32,0);*/
@@ -244,7 +245,7 @@ void cargar(void *ap ,int clientId){
 /*  r = recv(clientId,&ingreso->sexo,sizeof(char),0);*/
 /*    printf("\n");*/
 
-}
+/*}*/
 
 void leer(int clientId){
 	
@@ -305,63 +306,46 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 void recvPerro(void *ap, int clientId){
     struct dogType *recibiendo;
     recibiendo = ap;
-    recibiendo = malloc(sizeof(struct dogType));
     int r, tam;
     r= recv(clientId,&tam,sizeof(tam),0);
     if(r<0){
       perror("Error recv tamano nombre");
       exit(-1);
-    }else{
-    	printf("%i",tam);
     }
     r = recv(clientId,recibiendo->nombre,tam,0);
     if(r<0){
   	perror("Error recv nombre");
   	exit(-1);
-    }else{
-    	printf("nom %i",r);
     }
     r = recv(clientId,&recibiendo->edad,sizeof(int),0);
     if(r<0){
           perror("Error recv edad");
           exit(-1);
-    }else{
-    	printf("edad %i",r);
     }
     r= recv(clientId,&tam,sizeof(int),0);
     if(r<0){
         perror("Error recv tam raza");
         exit(-1);
-    }else{
-    	printf("tam raza %i",r);
     }
     r = recv(clientId,recibiendo->raza,tam,0);
     if(r<0){
          perror("Error recv raza");
          exit(-1);
-    }else{
-    	printf("raza %i",r);
     }
     r = recv(clientId,&recibiendo->estatura,sizeof(int),0);
     if(r<0){
         perror("Error recv estatura");
         exit(-1);
-    }else{
-    	printf("estatura %i",r);
     }
     r = recv(clientId,&recibiendo->peso,sizeof(float),0);
     if(r<0){
            perror("Error recv peso");
            exit(-1);
-    }else{
-    	printf("peso %i",r);
     }
     r = recv(clientId,&recibiendo->sexo,sizeof(char),0);
     if(r<0){
             perror("Error recv sexo");
                     exit(-1);
-    }else{
-    	printf("sexo %i",r);
     }
 }
 void sendPerro(void *ap,int clientId){

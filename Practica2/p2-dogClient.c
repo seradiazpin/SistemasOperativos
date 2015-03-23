@@ -193,7 +193,7 @@ void leer(int clientId){
   int r;
   struct dogType *lectura;
   char nombre[32];
- 
+  lectura=malloc(sizeof(struct dogType));
   int numeroRegistros = 0;
   r = recv(clientId,&numeroRegistros,sizeof(int),0);
   if(r<0){
@@ -224,7 +224,6 @@ void leer(int clientId){
 void recvPerro(void *ap, int clientId){
     struct dogType *lectura;
     lectura = ap;
-    lectura = malloc(sizeof(struct dogType));
     int r, tam;
     r= recv(clientId,&tam,sizeof(tam),0);
     if(r<0){

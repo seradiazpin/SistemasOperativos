@@ -3,6 +3,7 @@
 # include <sys/socket.h>
 # include <sys/types.h>
 # include <sys/wait.h>
+# include <sys/shm.h>
 # include <netinet/in.h> // esta libreria contiene la estructura sockaddr_in
 # include <netdb.h>
 # include <arpa/inet.h>
@@ -13,6 +14,7 @@
 #define PORT 9510
 #define BACKLOG 32
 
+int *writeFile;
 
 struct dogType
 {
@@ -42,13 +44,20 @@ void recvPerro();
 
 int main(){
 
-	int serverId,clienteId,r, users=0,status;
+	int serverId,clienteId,r, users=0,status,shmId;
 	struct sockaddr_in  client;
-	
 	socklen_t tamano=0;
+	key_t key=1234;
 	pid_t pid, end; // identificador de procesos
 	char buffer[32]; // prueba de funcionamiento
 	serverId=crear();
+	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);
+	if(shmId<0){
+		perror("Error en shmget");
+		exit(-1);
+	}
+	writeFile=(int *)shmat(shmId,0,0);
+	*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
 	while(isFull(users)){
 		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
@@ -62,7 +71,7 @@ int main(){
 			exit(-1);
 		}
 		if(pid==0){ //Somos hijos
-			printf("soy el hijo # %i ",users);
+			printf("\nsoy el hijo # %i ",users);
 			r=recv(clienteId,buffer,32,0 );
 			buffer[r]= 0;
 			printf("\n Mensaje recibido %s ",buffer);
@@ -86,15 +95,15 @@ int main(){
 				exit(-1);
 			}
 		//	}while(end==0);
-			printf("usuarios %i",users);
+			printf("\nusuarios %i",users);
 			if(end > 0){
 				if (WIFEXITED(status))
 				    printf("\nChild ended normally\n");
 		        else if (WIFSIGNALED(status))
-		            printf("Child ended because of an uncaught signal\n");
+		            printf("\nChild ended because of an uncaught signal\n");
 		        else if (WIFSTOPPED(status))
-		            printf("Child process has stopped\n");
-		            printf("Usuarios %i",users);
+		            printf("\nChild process has stopped\n");
+		            printf("\nUsuarios %i",users);
 		       	users--;
 	        }
 	                    
@@ -111,10 +120,10 @@ int main(){
 			    if (WIFEXITED(status))
 			    printf("\nChild ended normally\n");
 			    else if (WIFSIGNALED(status))
-			    printf("Child ended because of an uncaught signal\n");
+			    printf("\nChild ended because of an uncaught signal\n");
 			    else if (WIFSTOPPED(status))
-			    printf("Child process has stopped\n");
-			    printf("Usuarios %i",users);
+			    printf("\nChild process has stopped\n");
+			    printf("\nUsuarios %i",users);
 			    users--;
 		    }
 	    }
@@ -131,7 +140,7 @@ int isFull(int users){
 }
 
 int crear(){
-	printf("entro en crear");
+	printf("\nentro en crear");
 	int serverId, opt=1,r;
 	struct sockaddr_in server, client;
 	serverId=socket(AF_INET,SOCK_STREAM,0);	
@@ -159,7 +168,7 @@ int crear(){
 
 void atenderCliente(int clientId){
 	
-	printf("Entro en ingresar\n");
+	printf("\nEntro en atenderCliente\n");
 	int r,opc;
 	struct dogType *in;
 	r= recv(clientId,&opc,sizeof(int),0);
@@ -169,11 +178,11 @@ void atenderCliente(int clientId){
 	}
 	switch(opc){
 		case 1 :
-		ingresar(in,clientId,r);
+		ingresar(in,clientId);
 		break;
 
 		case 2 : 
-		leer(clientId,r);
+		leer(clientId);
 		break;
 		case 3 : printf("Borrar");break;
 		case 4 : printf("Buscar");break;
@@ -182,14 +191,17 @@ void atenderCliente(int clientId){
 	}
 }
 
-void ingresar(void* ingre,int clientId,int r){
+void ingresar(void* ingre,int clientId){
 	struct dogType *perros;
 	perros = ingre;
 	printf("\n----------Ingresar Registro----------\n");
 	
 	perros = malloc(sizeof(struct dogType));
-	cargar(perros,r);
+	cargar(perros,clientId);
 	imprimirPerro(perros);
+	do{
+	if(*writeFile==0){
+	*writeFile=1;
 	file=openFile("dataDogs.dat");
 	int data = fwrite(perros,sizeof(struct dogType),1,file);
 	if(data<=0){
@@ -197,49 +209,49 @@ void ingresar(void* ingre,int clientId,int r){
 	}
 	printf("Archivo end\n");
 	closeFile(file);
+	*writeFile=0;
 	free(perros);
+	}else{
+		printf("Esperando para escribir");
+	}
+	}while(*writeFile==1);
 
 }
 
-void cargar(void *ap ,int clientId,int r){
-  struct dogType *ingreso;
-  ingreso = ap;
-  char nombre[32];
-  int edad;
-  char raza[16];
-  int estatura;
-  float peso;
-  char  sexo;
-
-  printf("\n Nombre: ");
-  //scanf( " %31[^\n]",ingreso->nombre);
-  r = recv(clientId,ingreso->nombre,32,0);
-  nombre[r]=0;
-  //ingreso->nombre = nombre;
-  printf("\n Edad: ");
-  //scanf(" %d",&ingreso->edad);
-  r = recv(clientId,&ingreso->edad,sizeof(int),0);
-   //= edad;
-  //printf("\n Edad: %i",edad);
-  printf("\n Raza: ");
-  //scanf(" %15[^\n]",ingreso->raza);
-  r = recv(clientId,ingreso->raza,16,0);
-  printf("\n Estatura: ");
-  //scanf(" %i",&ingreso->estatura);
-  r = recv(clientId,&ingreso->estatura,sizeof(int),0);
-  printf("\n Peso: ");
-  //scanf(" %f",&ingreso->peso);
-  r = recv(clientId,&ingreso->peso,sizeof(float),0);
-  printf("\n Sexo M/H: ");
-  //scanf(" %c",&ingreso->sexo);
-  r = recv(clientId,&ingreso->sexo,sizeof(char),0);
-    printf("\n");
+void cargar(void *ap ,int clientId){
+/*  	struct dogType *ingreso;*/
+/*  	ingreso = ap; 	*/
+	recvPerro(ap,clientId);
+	imprimirPerro(ap);
+/*  printf("\n Nombre: ");*/
+/*  //scanf( " %31[^\n]",ingreso->nombre);*/
+/*  r = recv(clientId,ingreso->nombre,32,0);*/
+/*  nombre[r]=0;*/
+/*  //ingreso->nombre = nombre;*/
+/*  printf("\n Edad: ");*/
+/*  //scanf(" %d",&ingreso->edad);*/
+/*  r = recv(clientId,&ingreso->edad,sizeof(int),0);*/
+/*   //= edad;*/
+/*  //printf("\n Edad: %i",edad);*/
+/*  printf("\n Raza: ");*/
+/*  //scanf(" %15[^\n]",ingreso->raza);*/
+/*  r = recv(clientId,ingreso->raza,16,0);*/
+/*  printf("\n Estatura: ");*/
+/*  //scanf(" %i",&ingreso->estatura);*/
+/*  r = recv(clientId,&ingreso->estatura,sizeof(int),0);*/
+/*  printf("\n Peso: ");*/
+/*  //scanf(" %f",&ingreso->peso);*/
+/*  r = recv(clientId,&ingreso->peso,sizeof(float),0);*/
+/*  printf("\n Sexo M/H: ");*/
+/*  //scanf(" %c",&ingreso->sexo);*/
+/*  r = recv(clientId,&ingreso->sexo,sizeof(char),0);*/
+/*    printf("\n");*/
 
 }
 
-void leer(int clientId,int r){
+void leer(int clientId){
 	
-	int numeroRegistros = 0;
+	int numeroRegistros = 0,r;
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);

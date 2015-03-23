@@ -269,7 +269,6 @@ void recvPerro(void *ap, int clientId){
             perror("Error recv sexo");
                     exit(-1);
     }
-    imprimirPerro(recibiendo);
 }
 void sendPerro(void *ap,int clientId){
   struct dogType *lectura;

@@ -274,6 +274,8 @@ void leer(int clientId){
 	}
 	printf("Opcion %i\n",opcion );
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
+		fread(lectura,sizeof(struct dogType),1,file);
+		imprimirPerro(lectura);
 		sendPerro(lectura,clientId);
 	}else{
 		printf("\nNo se encontro\n");

@@ -8,7 +8,7 @@
 # include <netdb.h>
 # include <arpa/inet.h>
 # include <strings.h>
-
+# include <string.h>
 
 
 #define PORT 9510
@@ -35,13 +35,14 @@ FILE* openFile();
 void closeFile();
 void atenderCliente(); 
 void ingresar();
-/*void cargar();*/
 void imprimirPerro();
 void leer();
 void borrar();
+void buscar();
 void sendPerro();
 void recvPerro();
 int tamano();
+void minToMay();
 
 int main(){
 
@@ -96,7 +97,7 @@ int main(){
 	        	close(serverId);
 	        	exit(0);
 		}else{	//soy el padre
-			if(*users<userTmp){
+			if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
 			    int dead=0;
 			    while(dead<userTmp-*users){
 			    end=wait(&status);
@@ -180,8 +181,7 @@ int crear(){                     //crea el socket del servidor
 void atenderCliente(int clientId){     //esta funcion atiende al cliente
 	int vivo=0;
 	int r,opc=0;
-	do{
-	printf("\nEntro en atenderCliente\n");	
+	do{	
 	r= recv(clientId,&opc,sizeof(int),0);
 	if(r<0){
 		perror("\n Error al recibir solicitud");
@@ -198,11 +198,18 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 		case 3 : 
 		borrar(clientId);
 		break;
-		case 4 : printf("Buscar");break;
+		case 4 :
+		buscar(clientId);
+		break;
 		case 5 : *users = *users-1;
 	        	printf("salio uno %i",*users);
 	        	break;
-		default : perror ("Opcion invalida");
+	        case 0 : *users = *users-1;
+		       	printf("\nsalio uno %i",*users);
+			perror("\nEl usuario se desconecto repentinamente");
+			exit(-1);
+			break;
+		default : perror ("\nOpcion invalida");
 			  printf("\n%i",opc);
 			  opc=0;
 			  vivo++;
@@ -210,8 +217,8 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 	}
 	if(vivo>20){
 		*users = *users-1;
-	       	printf("salio uno %i",*users);
-		perror("El usuario se desconecto repentinamente");
+	       	printf("\nsalio uno %i",*users);
+		perror("\nEl usuario se desconecto repentinamente");
 		exit(-1);
 	}
 	}while(opc!=5);
@@ -222,7 +229,6 @@ void ingresar(int clientId){
 	perros= malloc(sizeof(struct dogType));
 	printf("\n----------Ingresar Registro----------\n");
 	recvPerro(perros,clientId);
-	imprimirPerro(perros);
 	do{
 	if(*writeFile==0){
 	*writeFile=1;
@@ -231,7 +237,6 @@ void ingresar(int clientId){
 	if(data<=0){
 		perror("Error de escritura");
 	}
-	printf("Archivo end\n");
 	closeFile(file);
 	*writeFile=0;
 	free(perros);
@@ -243,38 +248,7 @@ void ingresar(int clientId){
 }
 
 
-/*void cargar(void *ap ,int clientId){*/
-/*  	struct dogType *ingreso;*/
-/*  	ingreso = ap; 	*/
-/*	recvPerro(ap,clientId);*/
-/*  printf("\n Nombre: ");*/
-/*  //scanf( " %31[^\n]",ingreso->nombre);*/
-/*  r = recv(clientId,ingreso->nombre,32,0);*/
-/*  nombre[r]=0;*/
-/*  //ingreso->nombre = nombre;*/
-/*  printf("\n Edad: ");*/
-/*  //scanf(" %d",&ingreso->edad);*/
-/*  r = recv(clientId,&ingreso->edad,sizeof(int),0);*/
-/*   //= edad;*/
-/*  //printf("\n Edad: %i",edad);*/
-/*  printf("\n Raza: ");*/
-/*  //scanf(" %15[^\n]",ingreso->raza);*/
-/*  r = recv(clientId,ingreso->raza,16,0);*/
-/*  printf("\n Estatura: ");*/
-/*  //scanf(" %i",&ingreso->estatura);*/
-/*  r = recv(clientId,&ingreso->estatura,sizeof(int),0);*/
-/*  printf("\n Peso: ");*/
-/*  //scanf(" %f",&ingreso->peso);*/
-/*  r = recv(clientId,&ingreso->peso,sizeof(float),0);*/
-/*  printf("\n Sexo M/H: ");*/
-/*  //scanf(" %c",&ingreso->sexo);*/
-/*  r = recv(clientId,&ingreso->sexo,sizeof(char),0);*/
-/*    printf("\n");*/
-
-/*}*/
-
 void leer(int clientId){
-	printf("Entro a leer");
 	int numeroRegistros = 0,r;
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
@@ -282,7 +256,6 @@ void leer(int clientId){
 	file=openFile("dataDogs.dat");
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
-	//printf("numeroRegistros%i\n",numeroRegistros);
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
@@ -297,7 +270,6 @@ void leer(int clientId){
 	printf("Opcion %i\n",opcion );
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct dogType),1,file);
-		imprimirPerro(lectura);
 		sendPerro(lectura,clientId);
 	}else{
 		printf("\nNo se encontro\n");
@@ -305,7 +277,69 @@ void leer(int clientId){
 	closeFile(file);
 	free(lectura);
 }
-
+void buscar(int clientId){
+	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
+	struct dogType *busqueda;
+	long tamano=sizeof(struct dogType),tamArchivo;
+	char nameIn[32]=" ",nameTmp[32]=" ",opcion[32]=" ";
+	busqueda = malloc(tamano);
+	file=openFile("dataDogs.dat");
+	fseek(file, 0, SEEK_END);
+	tamArchivo=ftell(file);
+	numeroRegistros = tamArchivo/tamano;
+	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	if(r<0){
+		perror("error al mandar la cantidad de registros");
+		exit(-1);
+	}
+	r=recv(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("error al recibir tamano de la palabra");
+		exit(-1);
+	}
+	r=recv(clientId,opcion,tam,0);
+	if(r<0){
+		perror("error al recibir la palabra");
+		exit(-1);
+	}
+	printf("\n%s %i",opcion,tam);
+	for(numRegistro=0;numRegistro*tamano<tamArchivo; numRegistro++){
+		fseek(file,numRegistro*tamano,SEEK_SET);
+		fread(busqueda,tamano,1,file);
+		strcpy(nameIn,opcion);
+		strcpy(nameTmp,busqueda->nombre);
+		minToMay(nameIn);
+		minToMay(nameTmp);
+		if(strcmp(nameIn,nameTmp) == 0){
+			siguiente=1;
+		}else{
+			siguiente=0;
+		}
+		r=send(clientId,&siguiente,sizeof(int),0);
+		if(r<0){
+			perror("Error al enviar siguiente");
+			exit(-1);		
+		}
+		if(siguiente==1){
+		sendPerro(busqueda,clientId);
+		encontrados++;
+		}
+	
+	}
+	siguiente=-1;
+	r=send(clientId,&siguiente,sizeof(int),0);
+	if(r<0){
+		perror("Error al enviar el ultimo siguiente");
+		exit(-1);
+	}
+	r=send(clientId,&encontrados,sizeof(int),0);
+	if(r<0){
+		perror("Error al enviar el total de encontrados");
+		exit(-1);
+	}
+	closeFile(file);
+	free(busqueda);
+}
 void imprimirPerro(void *ap){
 	struct dogType *perros;
 	perros = ap;
@@ -495,4 +529,15 @@ int  tamano(char palabra[]){
 	i++;
 	return i;
 }
-
+void minToMay(char string[])
+{
+	int i=0;
+	int desp='a'-'A';
+	for (i=0;string[i]!='\0';++i)
+	{
+		if(string[i]>='a'&&string[i]<='z')
+		{
+			string[i]=string[i]-desp;
+		}
+	}
+}

@@ -26,6 +26,7 @@ void ingresar();
 void recvPerro();
 void sendPerro();
 void leer();
+void buscar();
 
 int main( int argc,char *argv[]){
   if(argv[1]==NULL){
@@ -118,10 +119,60 @@ void borrar(int clientId){
 	recvPerro(perros,clientId);
 	printf("Registro borrado\n");
 	imprimirPerro(perros);
+	free(perros);
 	confirmar();
 
 }
-
+void buscar(int clientId){
+	int numeroRegistros=0,r,tam,siguiente=0,numRegistro=0, encontrados=0;
+	char opcion [32];
+	struct dogType *recibido;
+	recibido=malloc(sizeof(struct dogType));
+	r = recv(clientId,&numeroRegistros,sizeof(int),0);//recibe el numero de registros actuales a la hora de hacer la peticion
+	if(r<0){
+		perror("Error al recibir el numero de registros");
+		exit(-1);	
+	}
+	printf("\n----------Buscar Registro---------- ");
+	printf("\nPerros registrados: %i",numeroRegistros);
+	printf("\nDigite el nombre del perro :\t ");		
+	scanf(" %31[^\n]",opcion);
+	tam=tamano(opcion);
+	printf("\n%s %i",opcion,tam);
+	r=send(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("error al enviar tamano de la palabra");
+		exit(-1);
+	}
+	r=send(clientId,opcion,tam,0);
+	if(r<0){
+		perror("error al mandar la palabra");
+		exit(-1);
+	}
+	while(siguiente>=0){
+		r=recv(clientId,&siguiente,sizeof(int),0);
+		if(r<0){
+			perror("Error al recibir siguiente");
+			exit(-1);
+		}
+		if(siguiente==1){
+			recvPerro(recibido,clientId);
+			printf("\n----------El numero del registro es : %i----------",numRegistro);
+			imprimirPerro(recibido);
+			encontrados++;		
+		}
+		if(siguiente!=-1)
+			numRegistro++;
+	}
+	r=recv(clientId,&siguiente,sizeof(int),0);
+	if(r<0){
+		perror("Error al recibir encontrados por el servidor");
+		exit(-1);
+	}
+	printf("\nSe encontro cliente%i servidor%i registos con ese nombre\n\n",encontrados,siguiente);
+	free(recibido);
+	confirmar();
+}
 void menu(int clientId){
   int r,i;
   struct dogType perros;
@@ -173,6 +224,7 @@ void menu(int clientId){
 		perror("Error en send: ");
 		exit(-1);
 		}
+		buscar(clientId);
 		break;	
         case('5'):
 		i=5;

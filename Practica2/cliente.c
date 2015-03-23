@@ -6,7 +6,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#define PORT 3141
+#define PORT 9510
 
 
 int main(int argc, char *argv[])

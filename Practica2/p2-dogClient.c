@@ -128,48 +128,58 @@ void menu(int clientId){
       opcion = getchar();
       switch(opcion){
         case('1'):
-                //                      ingresar();
-        i=1;
-        r=send(clientId,&i,sizeof(int),0);
-        ingresar(&perros,clientId);
-        break;
+		i=1;
+		r=send(clientId,&i,sizeof(int),0);
+		if(r<0){
+		perror("Error en send: ");
+		exit(-1);
+		}
+		ingresar(&perros,clientId);
+		break;
 
         case('2'):
-                //                     leer();
-        i=2;
-
-        r=send(clientId,&i,sizeof(int),0);
-        leer(clientId);
-        break;
+		i=2;
+		r=send(clientId,&i,sizeof(int),0);
+		if(r<0){
+		perror("Error en send: ");
+		exit(-1);
+		}
+		leer(clientId);
+		break;
         case('3'):
-                //                      borrar();
-        i=3;
-        r=send(clientId,&i,sizeof(int),0);
-        borrar(clientId,r);
-        break;
+		i=3;
+		r=send(clientId,&i,sizeof(int),0);
+		if(r<0){
+		perror("Error en send: ");
+		exit(-1);
+		}
+		borrar(clientId,r);
+		break;
         case('4'):
-                //                      buscar();
-        i=4;
-        r=send(clientId,&i,sizeof(int),0);
-        break;
-
+		i=4;
+		r=send(clientId,&i,sizeof(int),0);
+		if(r<0){
+		perror("Error en send: ");
+		exit(-1);
+		}
+		break;	
         case('5'):
-        opcion='5';
-        break;
-        
+		i=5;
+		r=send(clientId,&i,sizeof(int),0);
+		if(r<0){
+		perror("Error en send: ");
+		exit(-1);
+		}
+		opcion='5';
+		break;        
         default:
-        printf("Seleccione una opcion adecuada\n");
-        opcion=' ';
-        while(getchar()!='\n');
-        break;
+		printf("Seleccione una opcion adecuada\n");
+		opcion=' ';
+		while(getchar()!='\n');
+		break;
      }
-
      while(getchar()!='\n');
      system("clear");
-     if(r<0){
-      perror("Error en send: ");
-      exit(-1);
-    }
   }while( opcion != '5');
 
 }

@@ -14,7 +14,7 @@
 #define PORT 9510
 #define BACKLOG 32
 
-int *writeFile;
+int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
 
 struct dogType
 {
@@ -45,10 +45,10 @@ int tamano();
 
 int main(){
 
-	int serverId,clienteId,r, users=0,status,shmId;
+	int serverId,clienteId,r,status,shmId;
 	struct sockaddr_in  client;
 	socklen_t tamano=0;
-	key_t key=1234;
+	key_t key=1234,keyU=3232;
 	pid_t pid, end; // identificador de procesos
 	char buffer[32]; // prueba de funcionamiento
 	serverId=crear();
@@ -59,7 +59,15 @@ int main(){
 	}
 	writeFile=(int *)shmat(shmId,0,0);
 	*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
-	while(isFull(users)){
+	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);
+	if(shmId<0){
+		perror("Error en shmget users");
+		exit(-1);
+	}
+	users = (int *)shmat(shmId,0,0);
+	*users = 0;
+	printf("antes del fork users: %i",*users);
+	while(isFull()){
 		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
 		{
@@ -72,46 +80,30 @@ int main(){
 			exit(-1);
 		}
 		if(pid==0){ //Somos hijos
-			printf("\nsoy el hijo # %i ",users);
+			//*users=*users+1;
+			printf("\nsoy el hijo # %i ", *users);
 			r=recv(clienteId,buffer,7,0 );
 			buffer[r]= 0;
 			printf("\n Mensaje recibido %s ",buffer);
 			r = send(clienteId, "hola mundo", 10, 0);
-            if(r < 0){
-                   perror("\n-->Error en send(): ");
-                   exit(-1);
-            }
-	        //atender usuario
-	        atenderCliente(clienteId);
-	                    
-			close(clienteId);
-	        close(serverId);
-	        exit(0);
-		}else{	//soy el padre
-			users++;
-		//	do{
-			end=waitpid(-1,&status,WUNTRACED|WNOHANG |WCONTINUED); // aca espera al hijo para continuar
-			if(end==-1){
-				perror("\nError al esperar al hijo \n");
-				exit(-1);
+			if(r < 0){
+			perror("\n-->Error en send(): ");
+			exit(-1);
 			}
-		//	}while(end==0);
-			printf("\nusuarios %i",users);
-			if(end > 0){
-				if (WIFEXITED(status))
-				    printf("\nChild ended normally\n");
-		        else if (WIFSIGNALED(status))
-		            printf("\nChild ended because of an uncaught signal\n");
-		        else if (WIFSTOPPED(status))
-		            printf("\nChild process has stopped\n");
-		            printf("\nUsuarios %i",users);
-		       	users--;
-	        }
+	        //atender usuario
+	      		atenderCliente(clienteId);
+			close(clienteId);
+	        	close(serverId);
+	        	exit(0);
+		}else{	//soy el padre
+			*users=*users+1;
+			printf("\nusuarios padre%i",*users);
 	                    
 	    }
 	    }
+	    if(pid!=0){
 	    printf("\nEl servidor esta lleno se va adios :");
-	    while (users > 0){
+	    while (*users > 0){
 		    end=wait(&status);
 		    if(end==-1){
 		       perror("\nError al esperar al hijo \n");
@@ -125,22 +117,28 @@ int main(){
 			    else if (WIFSTOPPED(status))
 			    printf("\nChild process has stopped\n");
 			    printf("\nUsuarios %i",users);
-			    users--;
+			    *users=*users-1;
 		    }
 	    }
 	    close(clienteId);
 	    close(serverId);
+	    }else{
+	    
+	    exit(0); //si el hijo llega aca no tiene nada que hacer
+	    }
+	    
 }
 
-int isFull(int users){
-    if(users==BACKLOG){
+int isFull(){    
+    if(*users==BACKLOG){    		
           return 0;		//para parar el while
     }else{
+    	printf("is full %i",*users);
           return 1; 	//para continuar el while
     }
 }
 
-int crear(){
+int crear(){                     //crea el socket del servidor
 	printf("\nentro en crear");
 	int serverId, opt=1,r;
 	struct sockaddr_in server, client;
@@ -167,11 +165,11 @@ int crear(){
 	return serverId;
 }
 
-void atenderCliente(int clientId){
-	
-	printf("\nEntro en atenderCliente\n");
-	int r,opc;
-	struct dogType *in;
+void atenderCliente(int clientId){     //esta funcion atiende al cliente
+	int vivo=0;
+	int r,opc=0;
+	do{
+	printf("\nEntro en atenderCliente\n");	
 	r= recv(clientId,&opc,sizeof(int),0);
 	if(r<0){
 		perror("\n Error al recibir solicitud");
@@ -179,7 +177,7 @@ void atenderCliente(int clientId){
 	}
 	switch(opc){
 		case 1 :
-		ingresar(in,clientId);
+		ingresar(clientId);
 		break;
 
 		case 2 : 
@@ -189,14 +187,26 @@ void atenderCliente(int clientId){
 		borrar(clientId,r);
 		break;
 		case 4 : printf("Buscar");break;
+		case 5 : *users = *users-1;
+	        	printf("salio uno %i",*users);
+	        	break;
 		default : perror ("Opcion invalida");
-			break;
+			  printf("\n%i",opc);
+			  opc=0;
+			  vivo++;
+			  break;
 	}
+	if(vivo>20){
+		*users = *users-1;
+	       	printf("salio uno %i",*users);
+		perror("El usuario se desconecto repentinamente");
+		exit(-1);
+	}
+	}while(opc!=5);
 }
 
-void ingresar(void* ingre,int clientId){
+void ingresar(int clientId){
 	struct dogType *perros;
-	perros = ingre;
 	perros= malloc(sizeof(struct dogType));
 	printf("\n----------Ingresar Registro----------\n");
 	recvPerro(perros,clientId);

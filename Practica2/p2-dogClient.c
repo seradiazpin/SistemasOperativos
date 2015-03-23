@@ -79,6 +79,38 @@ void confirmar(){
 }
 
 
+void borrar(int clientId,int r){
+	
+	int found;
+	int numeroRegistros = 0;
+	struct dogType *perros;
+	long tamano=sizeof(struct dogType);
+	r = recv(clientId,&numeroRegistros,sizeof(int),0);
+	int opcion = 0;
+	do{
+		printf("\n----------Borrar Registro---------- ");
+		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
+		printf("\nRegistro que desea borrar:\t ");		
+		scanf("%d",&opcion);	
+		if(opcion<0 || opcion >= numeroRegistros){
+			printf("Introdusca un registro correcto\n");
+		}
+		r = send(clientId,&opcion, sizeof(int), 0);
+		r = recv(clientId,&found,sizeof(int),0);
+	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+
+	//r = recv(clientId,&found,sizeof(int),0);
+
+	printf("found %i\n",found );
+	if (! found) {
+		printf("No se encontro el registro n: %d\n\n", opcion);
+	}else{
+		printf("Registro borrado\n");
+	}
+	confirmar();
+
+}
+
 void menu(int clientId){
   int r,i;
   struct dogType perros;
@@ -113,6 +145,7 @@ void menu(int clientId){
                 //                      borrar();
         i=3;
         r=send(clientId,&i,sizeof(int),0);
+        borrar(clientId,r);
         break;
         case('4'):
                 //                      buscar();

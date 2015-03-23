@@ -26,7 +26,7 @@ struct dogType
    char  sexo;
 };
 
-FILE *file, *dogLog;
+FILE *file,*newfile, *dogLog;
 
 
 int isFull();
@@ -38,6 +38,7 @@ void ingresar();
 /*void cargar();*/
 void imprimirPerro();
 void leer();
+void borrar();
 void sendPerro();
 void recvPerro();
 int tamano();
@@ -184,7 +185,9 @@ void atenderCliente(int clientId){
 		case 2 : 
 		leer(clientId);
 		break;
-		case 3 : printf("Borrar");break;
+		case 3 : 
+		borrar(clientId,r);
+		break;
 		case 4 : printf("Buscar");break;
 		default : perror ("Opcion invalida");
 			break;
@@ -216,6 +219,7 @@ void ingresar(void* ingre,int clientId){
 	}while(*writeFile==1);
 
 }
+
 
 /*void cargar(void *ap ,int clientId){*/
 /*  	struct dogType *ingreso;*/
@@ -284,6 +288,45 @@ void imprimirPerro(void *ap){
 	printf("\n");	
 }
 
+void borrar(int clientId,int r){
+	
+	int found = 0;
+	int numeroRegistros = 0;
+	struct dogType *perros;
+	file = fopen("dataDogs.dat","r+");
+	newfile = fopen("temp.dat","w+");
+	long tamano=sizeof(struct dogType);
+	perros = malloc(tamano);
+	fseek(file, 0, SEEK_END);
+	numeroRegistros = ftell(file)/tamano;
+	r = send(clientId,&numeroRegistros, sizeof(long), 0);
+	int opcion = 0;
+	r = recv(clientId,&opcion,sizeof(char),0);
+	rewind(file);
+	printf(".-----------------Borrar-----------%i\n",opcion );
+	while (fread(perros,sizeof(struct dogType),1,file) != 0) {
+		if (opcion == ftell(file)/tamano-1) {
+			printf("Perro Borrado.\n\n");
+			found=1;
+			
+		} else {
+			fwrite(perros, sizeof(struct dogType), 1, newfile);
+		}
+	}
+
+	r = send(clientId,&found, sizeof(int), 0);
+	printf("found %i\n", found);
+
+	fclose(file);
+	fclose(newfile);
+
+	remove("dataDogs.dat");
+	rename("temp.dat", "dataDogs.dat");
+
+	free(perros);
+
+
+}
 
 
 FILE * openFile(char *nombre){  //metodo para abrir los archivos

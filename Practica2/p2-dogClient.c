@@ -79,14 +79,18 @@ void confirmar(){
 }
 
 
-void borrar(int clientId,int r){
+void borrar(int clientId){
 	
-	int found;
+	int found=0, r;
 	int numeroRegistros = 0;
 	struct dogType *perros;
-	long tamano=sizeof(struct dogType);
-	r = recv(clientId,&numeroRegistros,sizeof(int),0);
-	int opcion = 0;
+	do{
+	r = recv(clientId,&numeroRegistros,sizeof(int),0);//recibe el numero de registros actuales a la hora de hacer la peticion
+	if(r<0){
+		perror("Error al recibir el numero de registros");
+		exit(-1);	
+	}
+	int opcion = 0;	
 	do{
 		printf("\n----------Borrar Registro---------- ");
 		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
@@ -95,18 +99,25 @@ void borrar(int clientId,int r){
 		if(opcion<0 || opcion >= numeroRegistros){
 			printf("Introdusca un registro correcto\n");
 		}
-		r = send(clientId,&opcion, sizeof(int), 0);
-		r = recv(clientId,&found,sizeof(int),0);
 	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
-
-	//r = recv(clientId,&found,sizeof(int),0);
-
-	printf("found %i\n",found );
-	if (! found) {
-		printf("No se encontro el registro n: %d\n\n", opcion);
-	}else{
-		printf("Registro borrado\n");
+	r = send(clientId,&opcion, sizeof(int), 0); //envia el numero de registro que se desea borrar
+	if(r<0){
+		perror("Error al enviar la opcion deseada");
+		exit(-1);
 	}
+	r = recv(clientId,&found,sizeof(int),0);
+	if(r<0){
+		perror("Error al recibir confirmacion");
+		exit(-1);
+	}
+	if(!found){
+		printf("Lo sentimos tendra que volver a empezar la operacion porque el registro fue movido o ya no existe");
+	}
+	}while(!found); // si no existe toca volver a empezar la operacion
+	perros=malloc(sizeof(struct dogType));
+	recvPerro(perros,clientId);
+	printf("Registro borrado\n");
+	imprimirPerro(perros);
 	confirmar();
 
 }
@@ -153,7 +164,7 @@ void menu(int clientId){
 		perror("Error en send: ");
 		exit(-1);
 		}
-		borrar(clientId,r);
+		borrar(clientId);
 		break;
         case('4'):
 		i=4;

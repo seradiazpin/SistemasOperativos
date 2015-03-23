@@ -196,7 +196,7 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 		leer(clientId);
 		break;
 		case 3 : 
-		borrar(clientId,r);
+		borrar(clientId);
 		break;
 		case 4 : printf("Buscar");break;
 		case 5 : *users = *users-1;
@@ -318,34 +318,55 @@ void imprimirPerro(void *ap){
 	printf("\n");	
 }
 
-void borrar(int clientId,int r){
+void borrar(int clientId){
 	
-	int found = 0;
+	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
-	struct dogType *perros;
-	file = fopen("dataDogs.dat","r+");
-	newfile = fopen("temp.dat","w+");
 	long tamano=sizeof(struct dogType);
-	perros = malloc(tamano);
+	struct dogType *perros;
+	file = fopen("dataDogs.dat","r");
+	if(file==NULL){
+		perror("Archivo con los datos no existe, primero haga insertar antes de borrar");
+		exit(-1);
+	}
+	do{	
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
-	r = send(clientId,&numeroRegistros, sizeof(long), 0);
-	int opcion = 0;
-	r = recv(clientId,&opcion,sizeof(char),0);
-	rewind(file);
+	perros = malloc(tamano);
+	r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
+	if(r<0){
+		perror("Error para enviar el numero de registros");
+		exit(-1);
+	}
+	r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
+	if(r<0){
+		perror("Error para recibir la opcion");
+		exit(-1);
+	}
+	while(*writeFile); //espera mientras desocupan el archivo
+	if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.
+	*writeFile=1; //bloquea el archivo
+	found=1;	
+	}
+	r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+	if(r<0){
+		perror("Error al confirmar la existencia");
+		exit(-1);
+	}
+	}while(!found);
+	fread(perros,sizeof(struct dogType),1,file);	
+	sendPerro(perros,clientId);//envia el perro que se borrara
+	rewind(file);	
+	newfile = fopen("temp.dat","w+");
 	printf(".-----------------Borrar-----------%i\n",opcion );
 	while (fread(perros,sizeof(struct dogType),1,file) != 0) {
 		if (opcion == ftell(file)/tamano-1) {
 			printf("Perro Borrado.\n\n");
-			found=1;
 			
 		} else {
 			fwrite(perros, sizeof(struct dogType), 1, newfile);
 		}
 	}
-
-	r = send(clientId,&found, sizeof(int), 0);
-	printf("found %i\n", found);
 
 	fclose(file);
 	fclose(newfile);
@@ -354,7 +375,7 @@ void borrar(int clientId,int r){
 	rename("temp.dat", "dataDogs.dat");
 
 	free(perros);
-
+	*writeFile=0;
 
 }
 

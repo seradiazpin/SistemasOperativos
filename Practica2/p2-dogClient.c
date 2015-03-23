@@ -21,6 +21,11 @@ void menu();
 void cargar();
 void imprimirPerro();
 int conectar();
+void confirmar();
+void ingresar();
+void leer();
+void recvPerro();
+void sendPerro();
 
 int main( int argc,char *argv[]){
   if(argv[1]==NULL){
@@ -31,14 +36,14 @@ int main( int argc,char *argv[]){
   char buffer[32];
   struct dogType *dog;
   clienteId=conectar(argv[1]);
-  r= send(clienteId,"soy yo ",11,0);
+  r= send(clienteId,"soy yo ",7,0);
 
   if(r<0){
     perror("\nError en send(): ");
     exit(-1);
   }
 
-  r=recv(clienteId,buffer,32,0);
+  r=recv(clienteId,buffer,10,0);
   buffer[r]=0;
   printf("\n Mensaje recibido: %s",buffer);
   menu(clienteId);
@@ -73,6 +78,68 @@ void confirmar(){
   printf("\n");
 }
 
+
+void menu(int clientId){
+  int r,i;
+  struct dogType perros;
+  char opcion = ' ';
+  do{
+      printf("\tMASCOTAS\n");
+      printf("-------------------------\n");
+      printf("|1)Ingresar Registro\t|\n");
+      printf("|2)Leer Registro\t|\n");
+      printf("|3)Borrar Registro\t|\n");
+      printf("|4)Buscar Registro\t|\n");
+      printf("|5)Salir\t\t|\n");
+      printf("-------------------------\n");
+      printf("Opcion:\t ");
+      opcion = getchar();
+      switch(opcion){
+        case('1'):
+                //                      ingresar();
+        i=1;
+        r=send(clientId,&i,sizeof(int),0);
+        ingresar(&perros,clientId);
+        break;
+
+        case('2'):
+                //                     leer();
+        i=2;
+
+        r=send(clientId,&i,sizeof(int),0);
+        leer(clientId);
+        break;
+        case('3'):
+                //                      borrar();
+        i=3;
+        r=send(clientId,&i,sizeof(int),0);
+        break;
+        case('4'):
+                //                      buscar();
+        i=4;
+        r=send(clientId,&i,sizeof(int),0);
+        break;
+
+        case('5'):
+        opcion='5';
+        break;
+        
+        default:
+        printf("Seleccione una opcion adecuada\n");
+        opcion=' ';
+        while(getchar()!='\n');
+        break;
+     }
+
+     while(getchar()!='\n');
+     system("clear");
+     if(r<0){
+      perror("Error en send: ");
+      exit(-1);
+    }
+  }while( opcion != '5');
+
+}
 
 void ingresar(void *ap,int clientId, int r){
   struct dogType *perros;
@@ -154,68 +221,6 @@ void leer(int clientId){
   confirmar();
 }
 
-
-void menu(int clientId){
-  int r,i;
-  struct dogType perros;
-  char opcion = ' ';
-  do{
-      printf("\tMASCOTAS\n");
-      printf("-------------------------\n");
-      printf("|1)Ingresar Registro\t|\n");
-      printf("|2)Leer Registro\t|\n");
-      printf("|3)Borrar Registro\t|\n");
-      printf("|4)Buscar Registro\t|\n");
-      printf("|5)Salir\t\t|\n");
-      printf("-------------------------\n");
-      printf("Opcion:\t ");
-      opcion = getchar();
-      switch(opcion){
-        case('1'):
-                //                      ingresar();
-        i=1;
-        r=send(clientId,&i,sizeof(int),0);
-        ingresar(&perros,clientId,r);
-        break;
-
-        case('2'):
-                //                     leer();
-        i=2;
-
-        r=send(clientId,&i,sizeof(int),0);
-        leer(clientId);
-        break;
-        case('3'):
-                //                      borrar();
-        i=3;
-        r=send(clientId,&i,sizeof(int),0);
-        break;
-        case('4'):
-                //                      buscar();
-        i=4;
-        r=send(clientId,&i,sizeof(int),0);
-        break;
-
-        case('5'):
-        opcion='5';
-        break;
-        
-        default:
-        printf("Seleccione una opcion adecuada\n");
-        opcion=' ';
-        while(getchar()!='\n');
-        break;
-     }
-
-     while(getchar()!='\n');
-     system("clear");
-     if(r<0){
-      perror("Error en send: ");
-      exit(-1);
-    }
-  }while( opcion != '5');
-
-}
 void recvPerro(void *ap, int clientId){
     struct dogType *lectura;
     lectura = ap;

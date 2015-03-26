@@ -51,7 +51,7 @@ int main(){
 	socklen_t tamano=0;
 	key_t key=1234,keyU=3232;
 	pid_t pid, end; // identificador de procesos
-	char buffer[32]; // prueba de funcionamiento
+	char buffer[32], *ipAddr; // prueba de 	funcionamiento
 	serverId=crear();
 	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);
 	if(shmId<0){
@@ -82,7 +82,8 @@ int main(){
 		}
 		if(pid==0){ //Somos hijos
 			//*users=*users+1;
-			printf("\nsoy el hijo # %i ", *users);
+			ipAddr=inet_ntoa(client.sin_addr);
+			printf("\nsoy el hijo # %i %s :: %d \n",	*users,ipAddr,ntohs(client.sin_port));
 			r=recv(clienteId,buffer,7,0 );
 			buffer[r]= 0;
 			printf("\n Mensaje recibido %s ",buffer);

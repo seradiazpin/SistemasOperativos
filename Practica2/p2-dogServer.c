@@ -80,14 +80,14 @@ int main(){
 		if(pid==0){ //Somos hijos
 			ipAddr=inet_ntoa(client.sin_addr);
 			printf("\nsoy el hijo # %i %s :: %d \n",*users,ipAddr,ntohs(client.sin_port)); //Prueba para el Log
-			r=recv(clienteId,buffer,7,0 );
-			buffer[r]= 0;
-			printf("\n Mensaje recibido %s ",buffer);
-			r = send(clienteId, "hola mundo", 10, 0);
-			if(r < 0){
-				perror("\n-->Error en send(): ");
-				exit(-1);
-			}	        
+/*			r=recv(clienteId,buffer,7,0 );*/
+/*			buffer[r]= 0;*/
+/*			printf("\n Mensaje recibido %s ",buffer);*/
+/*			r = send(clienteId, "hola mundo", 10, 0);*/
+/*			if(r < 0){*/
+/*				perror("\n-->Error en send(): ");*/
+/*				exit(-1);*/
+/*			}	        */
 	      		atenderCliente(clienteId);  //atender usuario
 			close(clienteId);
 	        	close(serverId);

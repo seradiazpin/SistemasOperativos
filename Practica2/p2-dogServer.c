@@ -10,11 +10,8 @@
 # include <strings.h>
 # include <string.h>
 
-
 #define PORT 9510
-#define BACKLOG 32
-
-int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+#define BACKLOG 31
 
 struct dogType
 {
@@ -26,8 +23,8 @@ struct dogType
    char  sexo;
 };
 
+int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
 FILE *file,*newfile, *dogLog;
-
 
 int isFull();
 int crear();
@@ -45,7 +42,6 @@ int tamano();
 void minToMay();
 
 int main(){
-
 	int serverId,clienteId,r,status,shmId,userTmp;
 	struct sockaddr_in  client;
 	socklen_t tamano=0;
@@ -53,21 +49,20 @@ int main(){
 	pid_t pid, end; // identificador de procesos
 	char buffer[32], *ipAddr; // prueba de 	funcionamiento
 	serverId=crear();
-	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);
+	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);	//Creacion del espacio en memoria compartida
 	if(shmId<0){
 		perror("Error en shmget");
 		exit(-1);
 	}
-	writeFile=(int *)shmat(shmId,0,0);
+	writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
 	*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
-	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);
+	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
 	if(shmId<0){
 		perror("Error en shmget users");
 		exit(-1);
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
-	printf("antes del fork users: %i",*users);
 	while(isFull()){
 		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
@@ -81,19 +76,17 @@ int main(){
 			exit(-1);
 		}
 		if(pid==0){ //Somos hijos
-			//*users=*users+1;
 			ipAddr=inet_ntoa(client.sin_addr);
-			printf("\nsoy el hijo # %i %s :: %d \n",	*users,ipAddr,ntohs(client.sin_port));
+			printf("\nsoy el hijo # %i %s :: %d \n",*users,ipAddr,ntohs(client.sin_port)); //Prueba para el Log
 			r=recv(clienteId,buffer,7,0 );
 			buffer[r]= 0;
 			printf("\n Mensaje recibido %s ",buffer);
 			r = send(clienteId, "hola mundo", 10, 0);
 			if(r < 0){
-			perror("\n-->Error en send(): ");
-			exit(-1);
-			}
-	        //atender usuario
-	      		atenderCliente(clienteId);
+				perror("\n-->Error en send(): ");
+				exit(-1);
+			}	        
+	      		atenderCliente(clienteId);  //atender usuario
 			close(clienteId);
 	        	close(serverId);
 	        	exit(0);
@@ -101,23 +94,37 @@ int main(){
 			if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
 			    int dead=0;
 			    while(dead<userTmp-*users){
-			    end=wait(&status);
-			    if(end==-1){
-			       perror("\nError al esperar al hijo \n");
-			       exit(-1);
-			    }
-			    dead++;
+				    end=wait(&status);
+				    if(end==-1){
+				       perror("\nError al esperar al hijo \n");
+				       exit(-1);
+				    }
+				    dead++;
 			    }			
 			}
 			*users=*users+1;
-			printf("\nusuarios padre%i",*users);
 			userTmp=*users;
 	                    
-	    }
+	    	}
 	    }
 	    if(pid!=0){
+	    int r;
 	    printf("\nEl servidor esta lleno se va adios :");
-	    while (*users > 0){
+	    r=close(clienteId);
+	    if(r<0){
+	    	perror("Error al cerrar cliente");
+	    	exit(-1);
+	    }else{
+	    	printf("Cerro cliente");
+	    }
+	    r=close(serverId);
+	    if(r<0){
+	    	perror("Error al cerrar servidor");
+	    	exit(-1);
+	    }else{
+	    	printf("Cerro servidor");
+	    }
+	    while (*users > 0){						//Cuando el servidor no acepta mas clientes
 		    end=wait(&status);
 		    if(end==-1){
 		       perror("\nError al esperar al hijo \n");
@@ -130,12 +137,10 @@ int main(){
 			    printf("\nChild ended because of an uncaught signal\n");
 			    else if (WIFSTOPPED(status))
 			    printf("\nChild process has stopped\n");
-			    printf("\nUsuarios %i",users);
-			    *users=*users-1;
+			    printf("\nUsuarios %i",*users);
 		    }
 	    }
-	    close(clienteId);
-	    close(serverId);
+	    
 	    }else{
 	    
 	    exit(0); //si el hijo llega aca no tiene nada que hacer
@@ -144,11 +149,10 @@ int main(){
 }
 
 int isFull(){    
-    if(*users==BACKLOG){    		
-          return 0;		//para parar el while
+    if(*users<=BACKLOG){    		
+          return 1;		//para parar el while
     }else{
-    	printf("is full %i",*users);
-          return 1; 	//para continuar el while
+          return 0; 	//para continuar el while
     }
 }
 
@@ -165,7 +169,7 @@ int crear(){                     //crea el socket del servidor
 	server.sin_port = htons(PORT);
 	server.sin_addr.s_addr = INADDR_ANY;
 	bzero(server.sin_zero,8); // pertenece a la libreria strings.h
-	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
+//	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
 	r=bind(serverId,(struct sockaddr *)&server, sizeof(struct sockaddr)); //le da direccion al socket
 	if(r<0){
 		perror("\nError en bind():\n");
@@ -190,18 +194,18 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 	}
 	switch(opc){
 		case 1 :
-		ingresar(clientId);
-		break;
+			ingresar(clientId);
+			break;
 
 		case 2 : 
-		leer(clientId);
-		break;
+			leer(clientId);
+			break;
 		case 3 : 
-		borrar(clientId);
-		break;
+			borrar(clientId);
+			break;
 		case 4 :
-		buscar(clientId);
-		break;
+			buscar(clientId);
+			break;
 		case 5 : *users = *users-1;
 	        	printf("salio uno %i",*users);
 	        	break;
@@ -226,21 +230,21 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 }
 
 void ingresar(int clientId){
-	struct dogType *perros;
-	perros= malloc(sizeof(struct dogType));
+	struct dogType *ingreso;
+	ingreso= malloc(sizeof(struct dogType));
 	printf("\n----------Ingresar Registro----------\n");
-	recvPerro(perros,clientId);
+	recvPerro(ingreso,clientId);
 	do{
 	if(*writeFile==0){
 	*writeFile=1;
-	file=openFile("dataDogs.dat");
-	int data = fwrite(perros,sizeof(struct dogType),1,file);
+	file=openFile("dataDogs.dat");        //Abrir el archivo para escribir
+	int data = fwrite(ingreso,sizeof(struct dogType),1,file);
 	if(data<=0){
 		perror("Error de escritura");
 	}
 	closeFile(file);
 	*writeFile=0;
-	free(perros);
+	free(ingreso);
 	}else{
 		printf("Esperando para escribir");
 	}
@@ -254,7 +258,7 @@ void leer(int clientId){
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
-	file=openFile("dataDogs.dat");
+	file=openFile("dataDogs.dat");                         //Abre el archivo
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);

@@ -28,7 +28,8 @@ FILE *file,*newfile, *dogLog;
 
 int isFull();
 int crear();
-FILE* openFile();
+FILE* openFileR();
+FILE* openFileA();
 void closeFile();
 void atenderCliente(); 
 void ingresar();
@@ -40,6 +41,7 @@ void sendPerro();
 void recvPerro();
 int tamano();
 void minToMay();
+int numRegs();
 
 int main(){
 	int serverId,clienteId,r,status,shmId,userTmp;
@@ -236,8 +238,7 @@ void ingresar(int clientId){
 	recvPerro(ingreso,clientId);
 	do{
 	if(*writeFile==0){
-	*writeFile=1;
-	file=openFile("dataDogs.dat");        //Abrir el archivo para escribir
+	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
 	int data = fwrite(ingreso,sizeof(struct dogType),1,file);
 	if(data<=0){
 		perror("Error de escritura");
@@ -258,9 +259,7 @@ void leer(int clientId){
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
-	file=openFile("dataDogs.dat");                         //Abre el archivo
-	fseek(file, 0, SEEK_END);
-	numeroRegistros = ftell(file)/tamano;
+	numeroRegistros = numRegs();
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
@@ -272,7 +271,8 @@ void leer(int clientId){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
 	}
-	printf("Opcion %i\n",opcion );
+	while(*writeFile);
+	file=openFileR();
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct dogType),1,file);
 		sendPerro(lectura,clientId);
@@ -288,10 +288,7 @@ void buscar(int clientId){
 	long tamano=sizeof(struct dogType),tamArchivo;
 	char nameIn[32]=" ",nameTmp[32]=" ",opcion[32]=" ";
 	busqueda = malloc(tamano);
-	file=openFile("dataDogs.dat");
-	fseek(file, 0, SEEK_END);
-	tamArchivo=ftell(file);
-	numeroRegistros = tamArchivo/tamano;
+	numeroRegistros = numRegs();
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
@@ -308,6 +305,9 @@ void buscar(int clientId){
 		exit(-1);
 	}
 	printf("\n%s %i",opcion,tam);
+	while(*writeFile);
+	file=openFileR();
+	tamArchivo=ftell(file);
 	for(numRegistro=0;numRegistro*tamano<tamArchivo; numRegistro++){
 		fseek(file,numRegistro*tamano,SEEK_SET);
 		fread(busqueda,tamano,1,file);
@@ -346,14 +346,14 @@ void buscar(int clientId){
 	free(busqueda);
 }
 void imprimirPerro(void *ap){
-	struct dogType *perros;
-	perros = ap;
-	printf("\n Nombre: %s",perros->nombre);
-	printf("\n Edad: %i",perros->edad);
-	printf("\n Raza: %s",perros->raza);
-	printf("\n Estatura: %i",perros->estatura);
-	printf("\n Peso: %3.2f",perros->peso);
-	printf("\n sexo: %c",perros->sexo);
+	struct dogType *impreso;
+	impreso = ap;
+	printf("\n Nombre: %s",impreso->nombre);
+	printf("\n Edad: %i",impreso->edad);
+	printf("\n Raza: %s",impreso->raza);
+	printf("\n Estatura: %i",impreso->estatura);
+	printf("\n Peso: %3.2f",impreso->peso);
+	printf("\n sexo: %c",impreso->sexo);
 	printf("\n");	
 }
 
@@ -362,16 +362,10 @@ void borrar(int clientId){
 	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
-	struct dogType *perros;
-	file = fopen("dataDogs.dat","r");
-	if(file==NULL){
-		perror("Archivo con los datos no existe, primero haga insertar antes de borrar");
-		exit(-1);
-	}
+	struct dogType *borrado;
 	do{	
-	fseek(file, 0, SEEK_END);
-	numeroRegistros = ftell(file)/tamano;
-	perros = malloc(tamano);
+	numeroRegistros = numRegs();
+	borrado = malloc(tamano);
 	r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
 	if(r<0){
 		perror("Error para enviar el numero de registros");
@@ -383,9 +377,11 @@ void borrar(int clientId){
 		exit(-1);
 	}
 	while(*writeFile); //espera mientras desocupan el archivo
-	if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.
-	*writeFile=1; //bloquea el archivo
+	file=openFileR();
+	if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.	
 	found=1;	
+	}else{
+	closeFile(file);
 	}
 	r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 	if(r<0){
@@ -393,17 +389,17 @@ void borrar(int clientId){
 		exit(-1);
 	}
 	}while(!found);
-	fread(perros,sizeof(struct dogType),1,file);	
-	sendPerro(perros,clientId);//envia el perro que se borrara
+	fread(borrado,sizeof(struct dogType),1,file);	
+	sendPerro(borrado,clientId);//envia el perro que se borrara
 	rewind(file);	
 	newfile = fopen("temp.dat","w+");
 	printf(".-----------------Borrar-----------%i\n",opcion );
-	while (fread(perros,sizeof(struct dogType),1,file) != 0) {
+	while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
 		if (opcion == ftell(file)/tamano-1) {
 			printf("Perro Borrado.\n\n");
 			
 		} else {
-			fwrite(perros, sizeof(struct dogType), 1, newfile);
+			fwrite(borrado, sizeof(struct dogType), 1, newfile);
 		}
 	}
 
@@ -413,17 +409,28 @@ void borrar(int clientId){
 	remove("dataDogs.dat");
 	rename("temp.dat", "dataDogs.dat");
 
-	free(perros);
+	free(borrado);
 	*writeFile=0;
 
 }
 
 
-FILE * openFile(char *nombre){  //metodo para abrir los archivos
+FILE * openFileA(char *nombre){  //metodo para abrir los archivos append
+	*writeFile=1;
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
 		exit(-1);
+	}else{
+		return file;
+	}
+}
+
+FILE * openFileR(){  //metodo para abrir los archivos read
+	*writeFile=1;
+	file = fopen("dataDogs.dat","r"); 
+	if(file==NULL){
+		perror("Archivo con los datos no existe, primero haga insertar");
 	}else{
 		return file;
 	}
@@ -434,6 +441,7 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
+	*writeFile=0;
 }
 
 void recvPerro(void *ap, int clientId){
@@ -546,3 +554,15 @@ void minToMay(char string[])
 		}
 	}
 }
+int numRegs(){
+	int numeroRegistros = 0;
+	long tamano=sizeof(struct dogType);
+	while(*writeFile);
+	file=openFileR();                         //Abre el archivo
+	fseek(file, 0, SEEK_END);
+	numeroRegistros = ftell(file)/tamano;
+	rewind(file);
+	closeFile(file);
+	return numeroRegistros;		
+}
+

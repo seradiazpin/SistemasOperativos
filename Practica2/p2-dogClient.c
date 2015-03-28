@@ -27,6 +27,7 @@ void recvPerro();
 void sendPerro();
 void leer();
 void buscar();
+void borrar();
 
 int main( int argc,char *argv[]){
   if(argv[1]==NULL){
@@ -156,7 +157,7 @@ void confirmar(){
 
 void ingresar(void *ap,int clientId, int r){
   struct dogType *ingreso;
-  perros = ap;
+  ingreso = ap;
 /*  printf("\n----------Ingresar Registro----------\n");*/  
   ingreso = malloc(sizeof(struct dogType));
   cargar(ingreso,clientId,r);

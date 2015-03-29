@@ -1,10 +1,2 @@
-fecha [ Sun Mar 29 13:29:42 2015
- ] Cliente [ 0.0.0.0 ] [ insercion ] [ nueve , 9 , 9 , 9 , 9.00 , M ] 
-fecha [ Sun Mar 29 13:35:07 2015
- ] Cliente [ 0.0.0.0 ] [ lectura ] [ nueve , 9 , 9 , 9 , 9.00 , M ] 
-fecha [ Sun Mar 29 13:35:17 2015
- ] Cliente [ 0.0.0.0 ] [ borrado ] [ nueve , 9 , 9 , 9 , 9.00 , M ] 
-fecha [ Sun Mar 29 13:35:30 2015
- ] Cliente [ 0.0.0.0 ] [ insercion ] [ nueve , 9 , 9 , 9 , 9.00 , M ] 
-fecha [ Sun Mar 29 13:35:37 2015
- ] Cliente [ 0.0.0.0 ] [ busqueda ] [ nueve ] 
+ [ fecha 2015/03/29 17:41:14 ] Cliente [ 127.0.0.1 ] [ busqueda ] [ cinco ] 
+ [ fecha 2015/03/29 17:41:25 ] Cliente [ 127.0.0.1 ] [ lectura ] [ cinco , 5 , 52 , 5 , 5.00 , M ] 

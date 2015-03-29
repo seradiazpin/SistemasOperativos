@@ -33,7 +33,6 @@ FILE* openFileA();
 void fileEnd();
 void atenderCliente(); 
 void ingresar();
-void imprimirPerro();
 void leer();
 void borrar();
 void buscar();
@@ -80,7 +79,6 @@ int main(){
 		}
 		if(pid==0){ //Somos hijos
 			ipAddr=inet_ntoa(client.sin_addr);
-			printf("\nsoy el hijo # %i %s :: %d \n",*users,ipAddr,ntohs(client.sin_port)); //Prueba para el Log	        */
 	      		atenderCliente(clienteId,ipAddr);  //atender usuario
 			close(clienteId);
 	        	close(serverId);
@@ -103,42 +101,28 @@ int main(){
 	    	}
 	    }
 	    if(pid!=0){
-	    int r;
-	    printf("\nEl servidor esta lleno se va adios :");
-	    r=close(clienteId);
-	    if(r<0){
-	    	perror("Error al cerrar cliente");
-	    	exit(-1);
-	    }else{
-	    	printf("Cerro cliente");
-	    }
-	    r=close(serverId);
-	    if(r<0){
-	    	perror("Error al cerrar servidor");
-	    	exit(-1);
-	    }else{
-	    	printf("Cerro servidor");
-	    }
-	    while (*users > 0){						//Cuando el servidor no acepta mas clientes
-		    end=wait(&status);
-		    if(end==-1){
-		       perror("\nError al esperar al hijo \n");
-		       exit(-1);
+		    int r;
+		    r=close(clienteId);
+		    if(r<0){
+		    	perror("Error al cerrar cliente");
+		    	exit(-1);
 		    }
-		    if(end > 0){
-			    if (WIFEXITED(status))
-			    printf("\nChild ended normally\n");
-			    else if (WIFSIGNALED(status))
-			    printf("\nChild ended because of an uncaught signal\n");
-			    else if (WIFSTOPPED(status))
-			    printf("\nChild process has stopped\n");
-			    printf("\nUsuarios %i",*users);
+		    r=close(serverId);
+		    if(r<0){
+		    	perror("Error al cerrar servidor");
+		    	exit(-1);
 		    }
-	    }
-	    
+		    while (*users > 0){						//Cuando el servidor no acepta mas clientes
+			    end=wait(&status);
+			    if(end==-1){
+			       perror("\nError al esperar al hijo \n");
+			       exit(-1);
+			    }
+		    }
+		    
 	    }else{
 	    
-	    exit(0); //si el hijo llega aca no tiene nada que hacer
+	   	 exit(0); //si el hijo llega aca no tiene nada que hacer
 	    }
 	    
 }
@@ -152,7 +136,6 @@ int isFull(){
 }
 
 int crear(){                     //crea el socket del servidor
-	printf("\nentro en crear");
 	int serverId, opt=1,r;
 	struct sockaddr_in server, client;
 	serverId=socket(AF_INET,SOCK_STREAM,0);	
@@ -202,22 +185,18 @@ void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al c
 				buscar(clientId,ipAddr);
 				break;
 			case 5 : *users = *users-1;
-				printf("salio uno %i",*users);
 				break;
 			case 0 : *users = *users-1;
-			       	printf("\nsalio uno %i",*users);
 				perror("\nEl usuario se desconecto repentinamente");
 				exit(-1);
 				break;
 			default : perror ("\nOpcion invalida");
-				  printf("\n%i",opc);
 				  opc=0;
 				  vivo++;
 				  break;
 		}
 		if(vivo>20){
 			*users = *users-1;
-		       	printf("\nsalio uno %i",*users);
 			perror("\nEl usuario se desconecto repentinamente");
 			exit(-1);
 		}
@@ -229,25 +208,17 @@ void ingresar(int clientId, char *ipAddr){
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
 	int r;
-/*	printf("\n----------Ingresar Registro----------\n");*/
 	recvPerro(ingreso,clientId);
 	do{
-	printf("\n %i",*writeFile);
 	if(*writeFile==0){
 		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
-		printf("\nDespues de abrir\n");
 		int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
 		if(data<=0){
 			perror("Error de escritura");
-		}else{
-			printf("\nDespues de escribir\n");
 		}
 		fileEnd(file);
-		printf("Despues de cerrar");
 		writeLog(1,ingreso,ipAddr);
 		free(ingreso);
-	}else{
-		printf("Esperando para escribir");
 	}
 	}while(*writeFile==1);
 
@@ -307,7 +278,6 @@ void buscar(int clientId,char *ipAddr){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
-	printf("\n%s %i",opcion,tam);
 	while(*writeFile);
 	file=openFileR();
 	fseek(file, 0, SEEK_END);
@@ -350,17 +320,6 @@ void buscar(int clientId,char *ipAddr){
 	writeLog(4,opcion,ipAddr);
 	free(busqueda);
 }
-void imprimirPerro(void *ap){
-	struct dogType *impreso;
-	impreso = ap;
-	printf("\n Nombre: %s",impreso->nombre);
-	printf("\n Edad: %i",impreso->edad);
-	printf("\n Raza: %s",impreso->raza);
-	printf("\n Estatura: %i",impreso->estatura);
-	printf("\n Peso: %3.2f",impreso->peso);
-	printf("\n sexo: %c",impreso->sexo);
-	printf("\n");	
-}
 
 void borrar(int clientId,char *ipAddr){
 	
@@ -399,14 +358,10 @@ void borrar(int clientId,char *ipAddr){
 	sendPerro(borrado,clientId);//envia el perro que se borrara
 	rewind(file);	
 	newfile = fopen("temp.dat","w+");
-	printf(".-----------------Borrar-----------%i\n",opcion );
 	while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
-		if (opcion == ftell(file)/tamano-1) {
-			printf("Perro Borrado.\n\n");
-			
-		} else {
+		if ( opcion != ftell(file)/tamano-1) {
 			fwrite(borrado, sizeof(struct dogType), 1, newfile);
-		}
+		} 
 	}
 
 	fclose(file);
@@ -422,7 +377,6 @@ void borrar(int clientId,char *ipAddr){
 
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
-	printf("\nabrio archivo A\n");
 	FILE *file;
 	*writeFile=1;
 	file= fopen(nombre,"a+");
@@ -430,13 +384,11 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 		perror ("\nError al abrir el archivo para escritura");
 		exit(-1);
 	}else{
-		printf("abriendo archivo");
 		return file;
 	}
 }
 
 FILE* openFileR(){  //metodo para abrir los archivos read
-	printf("\nabrio archivo R\n");
 	FILE *file;
 	*writeFile=1;
 	file = fopen("dataDogs.dat","r"); 
@@ -448,11 +400,7 @@ FILE* openFileR(){  //metodo para abrir los archivos read
 }
 
 void fileEnd(FILE  *file){   //metodo para cerrar los archivos
-	printf("Entro a cerrar");
-	int r=fclose(file);
-	if(r==0){
-		printf("Cerro el archivo");
-	}else{		
+	if(fclose(file)){
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
@@ -505,56 +453,56 @@ void recvPerro(void *ap, int clientId){
 	}
 }
 void sendPerro(void *ap,int clientId){
-  struct dogType *enviado;
-  enviado = ap;
-  int r, tam;
-  tam=tamano(enviado->nombre);
-  r=send(clientId,&tam,sizeof(int),0);
-  if(r<0){
-  perror("error en send tam nombre");
-  exit(-1);
-  }
-  r=send(clientId,enviado->nombre,tam,0);
-  if(r<0){
-    perror("error en send nombre");
-    exit(-1);
-  }
-  r=send(clientId,&enviado->edad,sizeof(int),0);
-  if(r<0){
-    perror("error en send edad");
-    exit(-1);
-  }
-  tam=tamano(enviado->raza);
-  r=send(clientId,&tam,sizeof(int),0);
-  if(r<0){
-    perror("error en send tam raza");
-    exit(-1);
-  }
-  r=send(clientId,enviado->raza,tam,0);
-  if(r<0){
-     perror("error en send raza");
-     exit(-1);
-  }
-  r=send(clientId,&enviado->estatura,sizeof(int),0);
-  if(r<0){
-    perror("error en send estatura");
-    exit(-1);
-  }
-  r=send(clientId,&enviado->peso,sizeof(float),0);
-  if(r<0){
-     perror("error en send peso");
-     exit(-1);
-  }
-  r=send(clientId,&enviado->sexo,sizeof(char),0);
-  if(r<0){
-    perror("error en send sexo");
-    exit(-1);
-  }
+	struct dogType *enviado;
+	enviado = ap;
+	int r, tam;
+	tam=tamano(enviado->nombre);
+	r=send(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("error en send tam nombre");
+		exit(-1);
+	}
+	r=send(clientId,enviado->nombre,tam,0);
+	if(r<0){
+		perror("error en send nombre");
+		exit(-1);
+	}
+	r=send(clientId,&enviado->edad,sizeof(int),0);
+	if(r<0){
+		perror("error en send edad");
+		exit(-1);
+	}
+	tam=tamano(enviado->raza);
+	r=send(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("error en send tam raza");
+		exit(-1);
+	}
+	r=send(clientId,enviado->raza,tam,0);
+	if(r<0){
+		perror("error en send raza");
+		exit(-1);
+	}
+	r=send(clientId,&enviado->estatura,sizeof(int),0);
+	if(r<0){
+		perror("error en send estatura");
+		exit(-1);
+	}
+	r=send(clientId,&enviado->peso,sizeof(float),0);
+	if(r<0){
+		perror("error en send peso");
+		exit(-1);
+	}
+	r=send(clientId,&enviado->sexo,sizeof(char),0);
+	if(r<0){
+		perror("error en send sexo");
+		exit(-1);
+	}
 }
 int  tamano(char *palabra){
 	int i=0;
 	while(palabra[i]!='\0')
-	i++;
+		i++;
 	return i;
 }
 void minToMay(char *string)
@@ -585,7 +533,9 @@ void writeLog(int opcion,void *opcional,char *ipAddr){
 	int r;
 	char *accion, *palabra;
 	time_t curtime;
+	struct tm *local;
 	curtime=time(NULL);
+	local=localtime(&curtime);
 	FILE *doglog;
 	struct dogType *impreso;
 	switch(opcion){
@@ -596,7 +546,7 @@ void writeLog(int opcion,void *opcional,char *ipAddr){
 		default: printf("Error en log");
 	}
 	doglog=openFileA("serverDogs.log");
-	r=fprintf(doglog,"fecha [ %s ] Cliente [ %s ] [ %s ] [",ctime(&curtime),ipAddr,accion);
+	r=fprintf(doglog," [ fecha %i/%.2i/%.2i %.2i:%.2i:%.2i ] Cliente [ %s ] [ %s ] [",(local->tm_year+1900),(local->tm_mon+1),local->tm_mday,local->tm_hour,local->tm_min,local->tm_sec,ipAddr,accion);
 	if(r<=0){
 		perror("Error al escribir primera parte del log");
 		exit(-1);

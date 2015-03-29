@@ -309,6 +309,7 @@ void buscar(int clientId){
 	printf("\n%s %i",opcion,tam);
 	while(*writeFile);
 	file=openFileR();
+	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
 	for(numRegistro=0;numRegistro*tamano<tamArchivo; numRegistro++){
 		fseek(file,numRegistro*tamano,SEEK_SET);

@@ -9,6 +9,7 @@
 # include <arpa/inet.h>
 # include <strings.h>
 # include <string.h>
+# include <time.h>
 
 #define PORT 9510
 #define BACKLOG 31
@@ -29,7 +30,7 @@ int isFull();
 int crear();
 FILE* openFileR();
 FILE* openFileA();
-void closeFile();
+void fileEnd();
 void atenderCliente(); 
 void ingresar();
 void imprimirPerro();
@@ -41,6 +42,7 @@ void recvPerro();
 int tamano();
 void minToMay();
 int numRegs();
+void writeLog();
 
 int main(){
 	int serverId,clienteId,r,status,shmId,userTmp;
@@ -78,16 +80,8 @@ int main(){
 		}
 		if(pid==0){ //Somos hijos
 			ipAddr=inet_ntoa(client.sin_addr);
-			printf("\nsoy el hijo # %i %s :: %d \n",*users,ipAddr,ntohs(client.sin_port)); //Prueba para el Log
-/*			r=recv(clienteId,buffer,7,0 );*/
-/*			buffer[r]= 0;*/
-/*			printf("\n Mensaje recibido %s ",buffer);*/
-/*			r = send(clienteId, "hola mundo", 10, 0);*/
-/*			if(r < 0){*/
-/*				perror("\n-->Error en send(): ");*/
-/*				exit(-1);*/
-/*			}	        */
-	      		atenderCliente(clienteId);  //atender usuario
+			printf("\nsoy el hijo # %i %s :: %d \n",*users,ipAddr,ntohs(client.sin_port)); //Prueba para el Log	        */
+	      		atenderCliente(clienteId,ipAddr);  //atender usuario
 			close(clienteId);
 	        	close(serverId);
 	        	exit(0);
@@ -184,7 +178,7 @@ int crear(){                     //crea el socket del servidor
 	return serverId;
 }
 
-void atenderCliente(int clientId){     //esta funcion atiende al cliente
+void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al cliente
 	int vivo=0;
 	int r,opc=0;
 	do{	
@@ -195,17 +189,17 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 		}
 		switch(opc){
 			case 1 :
-				ingresar(clientId);
+				ingresar(clientId,ipAddr);
 				break;
 
 			case 2 : 
-				leer(clientId);
+				leer(clientId,ipAddr);
 				break;
 			case 3 : 
-				borrar(clientId);
+				borrar(clientId,ipAddr);
 				break;
 			case 4 :
-				buscar(clientId);
+				buscar(clientId,ipAddr);
 				break;
 			case 5 : *users = *users-1;
 				printf("salio uno %i",*users);
@@ -230,21 +224,27 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 	}while(opc!=5);
 }
 
-void ingresar(int clientId){
+void ingresar(int clientId, char *ipAddr){
 	struct dogType *ingreso;
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
+	int r;
 /*	printf("\n----------Ingresar Registro----------\n");*/
 	recvPerro(ingreso,clientId);
 	do{
+	printf("\n %i",*writeFile);
 	if(*writeFile==0){
 		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
-		int data = fwrite(ingreso,sizeof(struct dogType),1,file);
+		printf("\nDespues de abrir\n");
+		int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
 		if(data<=0){
 			perror("Error de escritura");
+		}else{
+			printf("\nDespues de escribir\n");
 		}
-		closeFile(file);
-		*writeFile=0;
+		fileEnd(file);
+		printf("Despues de cerrar");
+		writeLog(1,ingreso,ipAddr);
 		free(ingreso);
 	}else{
 		printf("Esperando para escribir");
@@ -254,7 +254,7 @@ void ingresar(int clientId){
 }
 
 
-void leer(int clientId){
+void leer(int clientId, char *ipAddr){
 	int numeroRegistros = 0,r;
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
@@ -280,10 +280,11 @@ void leer(int clientId){
 	}else{
 		printf("\nNo se encontro\n");
 	}
-	closeFile(file);
+	fileEnd(file);
+	writeLog(2,lectura,ipAddr);
 	free(lectura);
 }
-void buscar(int clientId){
+void buscar(int clientId,char *ipAddr){
 	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
@@ -345,7 +346,8 @@ void buscar(int clientId){
 		perror("Error al enviar el total de encontrados");
 		exit(-1);
 	}
-	closeFile(file);
+	fileEnd(file);
+	writeLog(4,opcion,ipAddr);
 	free(busqueda);
 }
 void imprimirPerro(void *ap){
@@ -360,7 +362,7 @@ void imprimirPerro(void *ap){
 	printf("\n");	
 }
 
-void borrar(int clientId){
+void borrar(int clientId,char *ipAddr){
 	
 	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
@@ -385,7 +387,7 @@ void borrar(int clientId){
 		if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.	
 			found=1;	
 		}else{
-			closeFile(file);
+			fileEnd(file);
 		}
 		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
@@ -412,7 +414,7 @@ void borrar(int clientId){
 
 	remove("dataDogs.dat");
 	rename("temp.dat", "dataDogs.dat");
-
+	writeLog(3,borrado,ipAddr);
 	free(borrado);
 	*writeFile=0;
 
@@ -420,6 +422,7 @@ void borrar(int clientId){
 
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
+	printf("\nabrio archivo A\n");
 	FILE *file;
 	*writeFile=1;
 	file= fopen(nombre,"a+");
@@ -427,11 +430,13 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 		perror ("\nError al abrir el archivo para escritura");
 		exit(-1);
 	}else{
+		printf("abriendo archivo");
 		return file;
 	}
 }
 
 FILE* openFileR(){  //metodo para abrir los archivos read
+	printf("\nabrio archivo R\n");
 	FILE *file;
 	*writeFile=1;
 	file = fopen("dataDogs.dat","r"); 
@@ -442,8 +447,12 @@ FILE* openFileR(){  //metodo para abrir los archivos read
 	}
 }
 
-void closeFile(FILE  *file){   //metodo para cerrar los archivos
-	if(!fclose(file)==0){
+void fileEnd(FILE  *file){   //metodo para cerrar los archivos
+	printf("Entro a cerrar");
+	int r=fclose(file);
+	if(r==0){
+		printf("Cerro el archivo");
+	}else{		
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
@@ -569,7 +578,39 @@ int numRegs(){
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
 	rewind(file);
-	closeFile(file);
+	fileEnd(file);
 	return numeroRegistros;		
+}
+void writeLog(int opcion,void *opcional,char *ipAddr){
+	int r;
+	char *accion, *palabra;
+	time_t curtime;
+	curtime=time(NULL);
+	FILE *doglog;
+	struct dogType *impreso;
+	switch(opcion){
+		case 1: accion="insercion";impreso=opcional;break;
+		case 2: accion="lectura";impreso=opcional;break;
+		case 3: accion="borrado";impreso=opcional;break;
+		case 4: accion="busqueda";palabra=opcional;break;
+		default: printf("Error en log");
+	}
+	doglog=openFileA("serverDogs.log");
+	r=fprintf(doglog,"fecha [ %s ] Cliente [ %s ] [ %s ] [",ctime(&curtime),ipAddr,accion);
+	if(r<=0){
+		perror("Error al escribir primera parte del log");
+		exit(-1);
+	}
+	if(opcion == 1 || opcion == 2 || opcion == 3){
+	r=fprintf(doglog," %s , %i , %s , %i , %3.2f , %c ] \n",impreso->nombre,impreso->edad,impreso->raza,impreso->estatura,impreso->peso,impreso->sexo);
+	}else
+		if(opcion == 4){
+			r=fprintf(doglog," %s ] \n",palabra);
+		}
+	if(r<=0){
+		perror("Error al escribir segunda parte del log");
+		exit(-1);
+	}
+	fileEnd(doglog);
 }
 

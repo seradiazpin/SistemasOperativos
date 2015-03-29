@@ -155,12 +155,12 @@ void confirmar(){
 }
 
 
-void ingresar(void *ap,int clientId, int r){
+void ingresar(void *ap,int clientId){
   struct dogType *ingreso;
   ingreso = ap;
-/*  printf("\n----------Ingresar Registro----------\n");*/  
+  printf("\n----------Ingresar Registro----------\n");  
   ingreso = malloc(sizeof(struct dogType));
-  cargar(ingreso,clientId,r);
+  cargar(ingreso,clientId);
   free(ingreso);
   confirmar();
 }
@@ -381,53 +381,53 @@ void recvPerro(void *ap, int clientId){
     }
 }
 void sendPerro(void *ap,int clientId){
-  struct dogType *lectura;
-  lectura = ap;
+  struct dogType *enviado;
+  enviado = ap;
   int r, tam;
-  tam=tamano(lectura->nombre);
+  tam=tamano(enviado->nombre);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
   perror("error en send tam nombre");
   exit(-1);
   }
-  r=send(clientId,lectura->nombre,tam,0);
+  r=send(clientId,enviado->nombre,tam,0);
   if(r<0){
     perror("error en send nombre");
     exit(-1);
   }
-  r=send(clientId,&lectura->edad,sizeof(int),0);
+  r=send(clientId,&enviado->edad,sizeof(int),0);
   if(r<0){
     perror("error en send edad");
     exit(-1);
   }
-  tam=tamano(lectura->raza);
+  tam=tamano(enviado->raza);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
     perror("error en send tam raza");
     exit(-1);
   }
-  r=send(clientId,lectura->raza,tam,0);
+  r=send(clientId,enviado->raza,tam,0);
   if(r<0){
      perror("error en send raza");
      exit(-1);
   }
-  r=send(clientId,&lectura->estatura,sizeof(int),0);
+  r=send(clientId,&enviado->estatura,sizeof(int),0);
   if(r<0){
     perror("error en send estatura");
     exit(-1);
   }
-  r=send(clientId,&lectura->peso,sizeof(float),0);
+  r=send(clientId,&enviado->peso,sizeof(float),0);
   if(r<0){
      perror("error en send peso");
      exit(-1);
   }
-  r=send(clientId,&lectura->sexo,sizeof(char),0);
+  r=send(clientId,&enviado->sexo,sizeof(char),0);
   if(r<0){
     perror("error en send sexo");
     exit(-1);
   }
 }
-int  tamano(char palabra[]){
+int  tamano(char *palabra){
 	int i=0;
 	while(palabra[i]!='\0')
 	i++;

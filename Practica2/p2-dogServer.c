@@ -24,7 +24,6 @@ struct dogType
 };
 
 int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
-FILE *file,*newfile, *dogLog;
 
 int isFull();
 int crear();
@@ -171,7 +170,7 @@ int crear(){                     //crea el socket del servidor
 	server.sin_port = htons(PORT);
 	server.sin_addr.s_addr = INADDR_ANY;
 	bzero(server.sin_zero,8); // pertenece a la libreria strings.h
-//	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
+	setsockopt(serverId,SOL_SOCKET,SO_REUSEADDR,(const char *)&opt,sizeof(int)); //No se que hace
 	r=bind(serverId,(struct sockaddr *)&server, sizeof(struct sockaddr)); //le da direccion al socket
 	if(r<0){
 		perror("\nError en bind():\n");
@@ -189,63 +188,64 @@ void atenderCliente(int clientId){     //esta funcion atiende al cliente
 	int vivo=0;
 	int r,opc=0;
 	do{	
-	r= recv(clientId,&opc,sizeof(int),0);
-	if(r<0){
-		perror("\n Error al recibir solicitud");
-		exit(-1);
-	}
-	switch(opc){
-		case 1 :
-			ingresar(clientId);
-			break;
+		r= recv(clientId,&opc,sizeof(int),0);
+		if(r<0){
+			perror("\n Error al recibir solicitud");
+			exit(-1);
+		}
+		switch(opc){
+			case 1 :
+				ingresar(clientId);
+				break;
 
-		case 2 : 
-			leer(clientId);
-			break;
-		case 3 : 
-			borrar(clientId);
-			break;
-		case 4 :
-			buscar(clientId);
-			break;
-		case 5 : *users = *users-1;
-	        	printf("salio uno %i",*users);
-	        	break;
-	        case 0 : *users = *users-1;
+			case 2 : 
+				leer(clientId);
+				break;
+			case 3 : 
+				borrar(clientId);
+				break;
+			case 4 :
+				buscar(clientId);
+				break;
+			case 5 : *users = *users-1;
+				printf("salio uno %i",*users);
+				break;
+			case 0 : *users = *users-1;
+			       	printf("\nsalio uno %i",*users);
+				perror("\nEl usuario se desconecto repentinamente");
+				exit(-1);
+				break;
+			default : perror ("\nOpcion invalida");
+				  printf("\n%i",opc);
+				  opc=0;
+				  vivo++;
+				  break;
+		}
+		if(vivo>20){
+			*users = *users-1;
 		       	printf("\nsalio uno %i",*users);
 			perror("\nEl usuario se desconecto repentinamente");
 			exit(-1);
-			break;
-		default : perror ("\nOpcion invalida");
-			  printf("\n%i",opc);
-			  opc=0;
-			  vivo++;
-			  break;
-	}
-	if(vivo>20){
-		*users = *users-1;
-	       	printf("\nsalio uno %i",*users);
-		perror("\nEl usuario se desconecto repentinamente");
-		exit(-1);
-	}
+		}
 	}while(opc!=5);
 }
 
 void ingresar(int clientId){
 	struct dogType *ingreso;
 	ingreso= malloc(sizeof(struct dogType));
-	printf("\n----------Ingresar Registro----------\n");
+	FILE *file;
+/*	printf("\n----------Ingresar Registro----------\n");*/
 	recvPerro(ingreso,clientId);
 	do{
 	if(*writeFile==0){
-	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
-	int data = fwrite(ingreso,sizeof(struct dogType),1,file);
-	if(data<=0){
-		perror("Error de escritura");
-	}
-	closeFile(file);
-	*writeFile=0;
-	free(ingreso);
+		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
+		int data = fwrite(ingreso,sizeof(struct dogType),1,file);
+		if(data<=0){
+			perror("Error de escritura");
+		}
+		closeFile(file);
+		*writeFile=0;
+		free(ingreso);
 	}else{
 		printf("Esperando para escribir");
 	}
@@ -259,6 +259,7 @@ void leer(int clientId){
 	struct dogType *lectura;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
+	FILE *file;
 	numeroRegistros = numRegs();
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
@@ -287,6 +288,7 @@ void buscar(int clientId){
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
 	char nameIn[32]=" ",nameTmp[32]=" ",opcion[32]=" ";
+	FILE *file;
 	busqueda = malloc(tamano);
 	numeroRegistros = numRegs();
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
@@ -363,31 +365,32 @@ void borrar(int clientId){
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
 	struct dogType *borrado;
+	FILE *file,*newfile;
 	do{	
-	numeroRegistros = numRegs();
-	borrado = malloc(tamano);
-	r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
-	if(r<0){
-		perror("Error para enviar el numero de registros");
-		exit(-1);
-	}
-	r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
-	if(r<0){
-		perror("Error para recibir la opcion");
-		exit(-1);
-	}
-	while(*writeFile); //espera mientras desocupan el archivo
-	file=openFileR();
-	if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.	
-	found=1;	
-	}else{
-	closeFile(file);
-	}
-	r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
-	if(r<0){
-		perror("Error al confirmar la existencia");
-		exit(-1);
-	}
+		numeroRegistros = numRegs();
+		borrado = malloc(tamano);
+		r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
+		if(r<0){
+			perror("Error para enviar el numero de registros");
+			exit(-1);
+		}
+		r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
+		if(r<0){
+			perror("Error para recibir la opcion");
+			exit(-1);
+		}
+		while(*writeFile); //espera mientras desocupan el archivo
+		file=openFileR();
+		if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.	
+			found=1;	
+		}else{
+			closeFile(file);
+		}
+		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		if(r<0){
+			perror("Error al confirmar la existencia");
+			exit(-1);
+		}
 	}while(!found);
 	fread(borrado,sizeof(struct dogType),1,file);	
 	sendPerro(borrado,clientId);//envia el perro que se borrara
@@ -415,7 +418,8 @@ void borrar(int clientId){
 }
 
 
-FILE * openFileA(char *nombre){  //metodo para abrir los archivos append
+FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
+	FILE *file;
 	*writeFile=1;
 	file= fopen(nombre,"a+");
 	if(file==NULL){
@@ -426,7 +430,8 @@ FILE * openFileA(char *nombre){  //metodo para abrir los archivos append
 	}
 }
 
-FILE * openFileR(){  //metodo para abrir los archivos read
+FILE* openFileR(){  //metodo para abrir los archivos read
+	FILE *file;
 	*writeFile=1;
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
@@ -445,104 +450,104 @@ void closeFile(FILE  *file){   //metodo para cerrar los archivos
 }
 
 void recvPerro(void *ap, int clientId){
-    struct dogType *recibiendo;
-    recibiendo = ap;
-    int r, tam;
-    r= recv(clientId,&tam,sizeof(int),0);
-    if(r<0){
-      perror("Error recv tamano nombre");
-      exit(-1);
-    }
-    r = recv(clientId,recibiendo->nombre,tam,0);
-    if(r<0){
-  	perror("Error recv nombre");
-  	exit(-1);
-    }
-    r = recv(clientId,&recibiendo->edad,sizeof(int),0);
-    if(r<0){
-          perror("Error recv edad");
-          exit(-1);
-    }
-    r= recv(clientId,&tam,sizeof(int),0);
-    if(r<0){
-        perror("Error recv tam raza");
-        exit(-1);
-    }
-    r = recv(clientId,recibiendo->raza,tam,0);
-    if(r<0){
-         perror("Error recv raza");
-         exit(-1);
-    }
-    r = recv(clientId,&recibiendo->estatura,sizeof(int),0);
-    if(r<0){
-        perror("Error recv estatura");
-        exit(-1);
-    }
-    r = recv(clientId,&recibiendo->peso,sizeof(float),0);
-    if(r<0){
-           perror("Error recv peso");
-           exit(-1);
-    }
-    r = recv(clientId,&recibiendo->sexo,sizeof(char),0);
-    if(r<0){
-            perror("Error recv sexo");
-                    exit(-1);
-    }
+	struct dogType *recibiendo;
+	recibiendo = ap;
+	int r, tam;
+	r= recv(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("Error recv tamano nombre");
+		exit(-1);
+	}
+	r = recv(clientId,recibiendo->nombre,tam,0);
+	if(r<0){
+		perror("Error recv nombre");
+		exit(-1);
+	}
+	r = recv(clientId,&recibiendo->edad,sizeof(int),0);
+	if(r<0){
+		perror("Error recv edad");
+		exit(-1);
+	}
+	r= recv(clientId,&tam,sizeof(int),0);
+	if(r<0){
+		perror("Error recv tam raza");
+		exit(-1);
+	}
+	r = recv(clientId,recibiendo->raza,tam,0);
+	if(r<0){
+		perror("Error recv raza");
+		exit(-1);
+	}
+	r = recv(clientId,&recibiendo->estatura,sizeof(int),0);
+	if(r<0){
+		perror("Error recv estatura");
+		exit(-1);
+	}
+	r = recv(clientId,&recibiendo->peso,sizeof(float),0);
+	if(r<0){
+		perror("Error recv peso");
+		exit(-1);
+	}
+	r = recv(clientId,&recibiendo->sexo,sizeof(char),0);
+	if(r<0){
+		perror("Error recv sexo");
+		exit(-1);
+	}
 }
 void sendPerro(void *ap,int clientId){
-  struct dogType *lectura;
-  lectura = ap;
+  struct dogType *enviado;
+  enviado = ap;
   int r, tam;
-  tam=tamano(lectura->nombre);
+  tam=tamano(enviado->nombre);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
   perror("error en send tam nombre");
   exit(-1);
   }
-  r=send(clientId,lectura->nombre,tam,0);
+  r=send(clientId,enviado->nombre,tam,0);
   if(r<0){
     perror("error en send nombre");
     exit(-1);
   }
-  r=send(clientId,&lectura->edad,sizeof(int),0);
+  r=send(clientId,&enviado->edad,sizeof(int),0);
   if(r<0){
     perror("error en send edad");
     exit(-1);
   }
-  tam=tamano(lectura->raza);
+  tam=tamano(enviado->raza);
   r=send(clientId,&tam,sizeof(int),0);
   if(r<0){
     perror("error en send tam raza");
     exit(-1);
   }
-  r=send(clientId,lectura->raza,tam,0);
+  r=send(clientId,enviado->raza,tam,0);
   if(r<0){
      perror("error en send raza");
      exit(-1);
   }
-  r=send(clientId,&lectura->estatura,sizeof(int),0);
+  r=send(clientId,&enviado->estatura,sizeof(int),0);
   if(r<0){
     perror("error en send estatura");
     exit(-1);
   }
-  r=send(clientId,&lectura->peso,sizeof(float),0);
+  r=send(clientId,&enviado->peso,sizeof(float),0);
   if(r<0){
      perror("error en send peso");
      exit(-1);
   }
-  r=send(clientId,&lectura->sexo,sizeof(char),0);
+  r=send(clientId,&enviado->sexo,sizeof(char),0);
   if(r<0){
     perror("error en send sexo");
     exit(-1);
   }
 }
-int  tamano(char palabra[]){
+int  tamano(char *palabra){
 	int i=0;
 	while(palabra[i]!='\0')
 	i++;
 	return i;
 }
-void minToMay(char string[])
+void minToMay(char *string)
 {
 	int i=0;
 	int desp='a'-'A';
@@ -555,6 +560,7 @@ void minToMay(char string[])
 	}
 }
 int numRegs(){
+	FILE *file;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
 	while(*writeFile);

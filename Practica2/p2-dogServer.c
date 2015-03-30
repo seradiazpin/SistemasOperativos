@@ -14,7 +14,7 @@
 
 
 #define PORT 9510
-#define BACKLOG 31
+#define BACKLOG 32
 
 struct dogType
 {

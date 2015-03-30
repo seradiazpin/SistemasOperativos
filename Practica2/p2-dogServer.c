@@ -206,7 +206,7 @@ void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al c
 }
 
 void ingresar(int clientId, char *ipAddr){
-	struct dogType *ingreso;
+	struct dogType *ingreso = NULL;
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
 	int r;
@@ -229,7 +229,7 @@ void ingresar(int clientId, char *ipAddr){
 
 void leer(int clientId, char *ipAddr){
 	int numeroRegistros = 0,r;
-	struct dogType *lectura;
+	struct dogType *lectura = NULL;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
 	FILE *file;
@@ -247,6 +247,7 @@ void leer(int clientId, char *ipAddr){
 	}
 	while(*writeFile);
 	file=openFileR();
+	rewind(file);
 	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
 		fread(lectura,sizeof(struct dogType),1,file);
 		sendPerro(lectura,clientId);

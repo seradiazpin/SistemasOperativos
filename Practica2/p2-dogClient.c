@@ -147,7 +147,7 @@ void confirmar(){
 
 
 void ingresar(int clientId){
-  struct dogType *ingreso;
+  struct dogType *ingreso = NULL;
   printf("\n----------Ingresar Registro----------\n");  
   ingreso = malloc(sizeof(struct dogType));
   cargar(ingreso,clientId);
@@ -158,7 +158,7 @@ void ingresar(int clientId){
 
 void leer(int clientId){
 	int r;
-	struct dogType *lectura;
+	struct dogType *lectura = NULL;
 	lectura=malloc(sizeof(struct dogType));
 	int numeroRegistros = 0;
 	r = recv(clientId,&numeroRegistros,sizeof(int),0);

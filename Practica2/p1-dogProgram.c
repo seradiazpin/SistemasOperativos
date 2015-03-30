@@ -114,7 +114,7 @@ void cerrar(FILE *file){
 */
 
 void ingresar(){
-	struct dogType *perros;
+	struct dogType *perros = NULL;
 	printf("\n----------Ingresar Registro----------\n");
 	
 	perros = malloc(sizeof(struct dogType));

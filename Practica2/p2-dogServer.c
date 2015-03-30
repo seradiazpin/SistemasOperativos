@@ -10,6 +10,8 @@
 # include <strings.h>
 # include <string.h>
 # include <time.h>
+# include <unistd.h>
+
 
 #define PORT 9510
 #define BACKLOG 31

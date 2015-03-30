@@ -5,6 +5,8 @@
 # include <netinet/in.h>
 # include <netdb.h>
 # include <arpa/inet.h>
+# include <unistd.h>
+# include <string.h> 
 
 #define PORT 9510
 
@@ -28,6 +30,7 @@ void sendPerro();
 void leer();
 void buscar();
 void borrar();
+int tamano();
 
 int main( int argc,char *argv[]){
   if(argv[1]==NULL){
@@ -287,12 +290,15 @@ void cargar(void *ap,int clientId){
 	ingreso = ap;
 	printf("\n Nombre: ");
 	scanf( " %31[^\n]",ingreso->nombre);
+	while(getchar()!='\n');
 	printf("\n Edad: ");
 	scanf(" %d",&ingreso->edad);
 	printf("\n Raza: ");
 	scanf(" %15[^\n]",ingreso->raza);
+	while(getchar()!='\n');
 	printf("\n Estatura: ");
 	scanf(" %i",&ingreso->estatura);
+
 	printf("\n Peso: ");
 	scanf(" %f",&ingreso->peso);
 	do{	

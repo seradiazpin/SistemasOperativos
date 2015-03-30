@@ -34,20 +34,9 @@ int main( int argc,char *argv[]){
   	perror("Error de sintax intente e.g. ./p2-dogClient 127.0.0.1");
   	exit(-1);
   }
-  int clienteId, r;
-  char buffer[32];
+  int clienteId;
   struct dogType *dog;
   clienteId=conectar(argv[1]);		// crea y conecta el socket
-/*  r= send(clienteId,"soy yo ",7,0);*/
-
-/*  if(r<0){*/
-/*    perror("\nError en send(): ");*/
-/*    exit(-1);*/
-/*  }*/
-
-/*  r=recv(clienteId,buffer,10,0);*/
-/*  buffer[r]=0;*/
-/*  printf("\n Mensaje recibido: %s",buffer);*/
   menu(clienteId);
   close(clienteId);
 }
@@ -77,7 +66,6 @@ int conectar( char *argv){
 
 void menu(int clientId){
   int r,i;
-  struct dogType perros;
   char opcion = ' ';
   do{
       printf("\tMASCOTAS\n");
@@ -98,7 +86,7 @@ void menu(int clientId){
 		perror("Error en send: ");
 		exit(-1);
 		}
-		ingresar(&perros,clientId);
+		ingresar(clientId);
 		break;
 
         case('2'):
@@ -155,9 +143,8 @@ void confirmar(){
 }
 
 
-void ingresar(void *ap,int clientId){
+void ingresar(int clientId){
   struct dogType *ingreso;
-  ingreso = ap;
   printf("\n----------Ingresar Registro----------\n");  
   ingreso = malloc(sizeof(struct dogType));
   cargar(ingreso,clientId);
@@ -202,7 +189,7 @@ void borrar(int clientId){
 	
 	int found=0, r;
 	int numeroRegistros = 0;
-	struct dogType *perros;
+	struct dogType *borrado;
 	do{
 	r = recv(clientId,&numeroRegistros,sizeof(int),0);//recibe el numero de registros actuales a la hora de hacer la peticion
 	if(r<0){
@@ -233,19 +220,19 @@ void borrar(int clientId){
 		printf("Lo sentimos tendra que volver a empezar la operacion porque el registro fue movido o ya no existe");
 	}
 	}while(!found); // si no existe toca volver a empezar la operacion
-	perros=malloc(sizeof(struct dogType));
-	recvPerro(perros,clientId);
+	borrado=malloc(sizeof(struct dogType));
+	recvPerro(borrado,clientId);
 	printf("Registro borrado\n");
-	imprimirPerro(perros);
-	free(perros);
+	imprimirPerro(borrado);
+	free(borrado);
 	confirmar();
 
 }
 void buscar(int clientId){
 	int numeroRegistros=0,r,tam,siguiente=0,numRegistro=0, encontrados=0;
 	char opcion [32];
-	struct dogType *recibido;
-	recibido=malloc(sizeof(struct dogType));
+	struct dogType *buscado;
+	buscado=malloc(sizeof(struct dogType));
 	r = recv(clientId,&numeroRegistros,sizeof(int),0);//recibe el numero de registros actuales a la hora de hacer la peticion
 	if(r<0){
 		perror("Error al recibir el numero de registros");
@@ -274,9 +261,9 @@ void buscar(int clientId){
 			exit(-1);
 		}
 		if(siguiente==1){
-			recvPerro(recibido,clientId);
+			recvPerro(buscado,clientId);
 			printf("\n----------El numero del registro es : %i----------",numRegistro);
-			imprimirPerro(recibido);
+			imprimirPerro(buscado);
 			encontrados++;		
 		}
 		if(siguiente!=-1)
@@ -288,7 +275,7 @@ void buscar(int clientId){
 		exit(-1);
 	}
 	printf("\nSe encontro cliente%i servidor%i registos con ese nombre\n\n",encontrados,siguiente);
-	free(recibido);
+	free(buscado);
 	confirmar();
 }
 
@@ -296,7 +283,7 @@ void buscar(int clientId){
 
 
 void cargar(void *ap,int clientId){
-  struct dogType *ingreso;
+  	struct dogType *ingreso;
 	ingreso = ap;
 	printf("\n Nombre: ");
 	scanf( " %31[^\n]",ingreso->nombre);
@@ -335,7 +322,6 @@ void imprimirPerro(void *ap){
 
 
 void recvPerro(void *ap, int clientId){
-    printf("\nentro a recibir");
     struct dogType *recibiendo;
     recibiendo = ap;
     int r, tam;

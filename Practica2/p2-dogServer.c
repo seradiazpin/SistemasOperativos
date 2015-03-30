@@ -228,11 +228,12 @@ void ingresar(int clientId, char *ipAddr){
 
 
 void leer(int clientId, char *ipAddr){
-	int numeroRegistros = 0,r;
+	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;
 	long tamano=sizeof(struct dogType);
 	lectura = malloc(tamano);
 	FILE *file;
+	do{
 	numeroRegistros = numRegs();
 	r = send(clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
@@ -248,14 +249,23 @@ void leer(int clientId, char *ipAddr){
 	while(*writeFile);
 	file=openFileR();
 	rewind(file);
-	if((! numeroRegistros == 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0)){
-		fread(lectura,sizeof(struct dogType),1,file);
-		sendPerro(lectura,clientId);
+	if(( numeroRegistros > 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0) && fread(lectura,sizeof(struct dogType),1,file)==1){
+		found=1;
+		
 	}else{
-		printf("\nNo se encontro\n");
+		fileEnd(file);
 	}
-	fileEnd(file);
-	writeLog(2,lectura,ipAddr);
+		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		if(r<0){
+			perror("Error al confirmar la existencia");
+			exit(-1);
+		}
+	}while(!found && numeroRegistros>0);
+	if(numeroRegistros>0){
+		sendPerro(lectura,clientId);
+		fileEnd(file);
+		writeLog(2,lectura,ipAddr);
+	}
 	free(lectura);
 }
 void buscar(int clientId,char *ipAddr){
@@ -346,7 +356,7 @@ void borrar(int clientId,char *ipAddr){
 		}
 		while(*writeFile); //espera mientras desocupan el archivo
 		file=openFileR();
-		if(fseek(file,opcion*tamano,SEEK_SET)==0){ //confirma que aun exista.	
+		if(fseek(file,opcion*tamano,SEEK_SET)==0 && fread(borrado,sizeof(struct dogType),1,file)==1 ){ //confirma que aun exista.	
 			found=1;	
 		}else{
 			fileEnd(file);
@@ -356,23 +366,25 @@ void borrar(int clientId,char *ipAddr){
 			perror("Error al confirmar la existencia");
 			exit(-1);
 		}
-	}while(!found);
-	fread(borrado,sizeof(struct dogType),1,file);	
-	sendPerro(borrado,clientId);//envia el perro que se borrara
-	rewind(file);	
-	newfile = fopen("temp.dat","w+");
-	while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
-		if ( opcion != ftell(file)/tamano-1) {
-			fwrite(borrado, sizeof(struct dogType), 1, newfile);
-		} 
+	}while(!found && numeroRegistros>0);
+	if(numeroRegistros>0){
+		fread(borrado,sizeof(struct dogType),1,file);	
+		sendPerro(borrado,clientId);//envia el perro que se borrara
+		rewind(file);	
+		newfile = fopen("temp.dat","w+");
+		while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
+			if ( opcion != ftell(file)/tamano-1) {
+				fwrite(borrado, sizeof(struct dogType), 1, newfile);
+			} 
+		}
+
+		fclose(file);
+		fclose(newfile);
+
+		remove("dataDogs.dat");
+		rename("temp.dat", "dataDogs.dat");
+		writeLog(3,borrado,ipAddr);
 	}
-
-	fclose(file);
-	fclose(newfile);
-
-	remove("dataDogs.dat");
-	rename("temp.dat", "dataDogs.dat");
-	writeLog(3,borrado,ipAddr);
 	free(borrado);
 	*writeFile=0;
 
@@ -475,7 +487,7 @@ void writeLog(int opcion,void *opcional,char *ipAddr){
 		case 2: accion="lectura";impreso=opcional;break;
 		case 3: accion="borrado";impreso=opcional;break;
 		case 4: accion="busqueda";palabra=opcional;break;
-		default: printf("Error en log");
+		default: perror("Error en log");exit(-1);break;
 	}
 	doglog=openFileA("serverDogs.log");
 	r=fprintf(doglog," [ fecha %i/%.2i/%.2i %.2i:%.2i:%.2i ] Cliente [ %s ] [ %s ] [",(local->tm_year+1900),(local->tm_mon+1),local->tm_mday,local->tm_hour,local->tm_min,local->tm_sec,ipAddr,accion);

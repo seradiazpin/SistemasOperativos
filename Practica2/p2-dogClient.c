@@ -157,10 +157,10 @@ void ingresar(int clientId){
 
 
 void leer(int clientId){
-	int r;
+	int r,found=0;
 	struct dogType *lectura = NULL;
-	lectura=malloc(sizeof(struct dogType));
 	int numeroRegistros = 0;
+	do{
 	r = recv(clientId,&numeroRegistros,sizeof(int),0);
 	if(r<0){
 		perror("Error al recv cantidad de registros");
@@ -172,7 +172,7 @@ void leer(int clientId){
 		printf("\nPerros registrados: %i  Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
 		printf("\nRegistro:\t ");   
 		scanf("%d",&opcion);  
-		if(opcion<0 || opcion >= numeroRegistros){
+		if((opcion<0 || opcion >= numeroRegistros)&& numeroRegistros>0){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while(( numeroRegistros != 0 )&& (opcion<0 || opcion >= numeroRegistros));
@@ -181,9 +181,23 @@ void leer(int clientId){
 		perror("Error al send numero de registro");
 		exit(-1);
 	}
+	r=recv(clientId,&found,sizeof(int),0);
+	if(r<0){
+			perror("Error al confirmar la existencia");
+			exit(-1);
+		}
+	if(!found && numeroRegistros>0){
+		printf("\nLo sentimos tendra que volver a empezar la operacion porque el registro fue movido o ya no existe\n");
+	}
+	}while(!found && numeroRegistros>0);
+	if(numeroRegistros>0){
+	lectura=malloc(sizeof(struct dogType));
 	recvPerro(lectura,clientId);
 	imprimirPerro(lectura);
 	free(lectura);
+	}else{
+		printf("\nPrimero inserte algun elemento para leer\n");
+	}
 	confirmar();
 }
 
@@ -205,10 +219,10 @@ void borrar(int clientId){
 		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
 		printf("\nRegistro que desea borrar:\t ");		
 		scanf("%d",&opcion);	
-		if(opcion<0 || opcion >= numeroRegistros){
+		if(opcion<0 || opcion >= numeroRegistros && numeroRegistros>0){
 			printf("Introdusca un registro correcto\n");
 		}
-	}while((! numeroRegistros == 0 )&& (opcion<0 || opcion >= numeroRegistros));
+	}while(( numeroRegistros > 0 )&& (opcion<0 || opcion >= numeroRegistros));
 	r = send(clientId,&opcion, sizeof(int), 0); //envia el numero de registro que se desea borrar
 	if(r<0){
 		perror("Error al enviar la opcion deseada");
@@ -219,15 +233,19 @@ void borrar(int clientId){
 		perror("Error al recibir confirmacion");
 		exit(-1);
 	}
-	if(!found){
-		printf("Lo sentimos tendra que volver a empezar la operacion porque el registro fue movido o ya no existe");
+	if(!found && numeroRegistros>0){
+		printf("\nLo sentimos tendra que volver a empezar la operacion porque el registro fue movido o ya no existe\n");
 	}
-	}while(!found); // si no existe toca volver a empezar la operacion
-	borrado=malloc(sizeof(struct dogType));
-	recvPerro(borrado,clientId);
-	printf("Registro borrado\n");
-	imprimirPerro(borrado);
-	free(borrado);
+	}while(!found && numeroRegistros>0); // si no existe toca volver a empezar la operacion
+	if(numeroRegistros>0){
+		borrado=malloc(sizeof(struct dogType));
+		recvPerro(borrado,clientId);
+		printf("Registro borrado\n");
+		imprimirPerro(borrado);
+		free(borrado);
+	}else{
+		printf("\nPrimero ingrese algun registro antes de querer borrar\n");
+	}
 	confirmar();
 
 }
@@ -246,7 +264,6 @@ void buscar(int clientId){
 	printf("\nDigite el nombre del perro :\t ");		
 	scanf(" %31[^\n]",opcion);
 	tam=tamano(opcion);
-	printf("\n%s %i",opcion,tam);
 	r=send(clientId,&tam,sizeof(int),0);
 	if(r<0){
 		perror("error al enviar tamano de la palabra");
@@ -277,7 +294,11 @@ void buscar(int clientId){
 		perror("Error al recibir encontrados por el servidor");
 		exit(-1);
 	}
-	printf("\nSe encontro cliente%i servidor%i registos con ese nombre\n\n",encontrados,siguiente);
+	if(numeroRegistros>0){
+		printf("\nSe encontro cliente%i servidor%i registos con ese nombre\n\n",encontrados,siguiente);
+	}else{
+		printf("\nPrimero ingrese un registro pues no hay donde buscar\n");
+	}
 	free(buscado);
 	confirmar();
 }
@@ -335,7 +356,7 @@ void recvPerro(void *ap, int clientId){
     r=recv(clientId,recibiendo+tamTotal,tam-tamTotal,0);
 	if(r<0){perror("Error al enviar perro");exit(-1);}    
     tamTotal=tamTotal+r;
-    printf("Recibido %i total %i/%i",r,tamTotal,tam);
+    printf("\nRecibido %i total %i/%i\n",r,tamTotal,tam);
     }while(tam-tamTotal!=0);
 }
 void sendPerro(void *ap,int clientId){
@@ -346,7 +367,7 @@ void sendPerro(void *ap,int clientId){
     r=send(clientId,enviado+tamTotal,tam-tamTotal,0);
     	if(r<0){perror("Error al enviar perro");exit(-1);}
     tamTotal=tamTotal+r;
-    printf("Enviado %i total %i/%i",r,tamTotal,tam);
+    printf("\nEnviado %i total %i/%i\n",r,tamTotal,tam);
     }while(tam-tamTotal!=0);
 }
 

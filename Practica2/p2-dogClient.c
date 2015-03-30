@@ -328,97 +328,28 @@ void imprimirPerro(void *ap){
 
 
 void recvPerro(void *ap, int clientId){
-    struct dogType *recibiendo;
-    recibiendo = ap;
-    int r, tam;
-    r= recv(clientId,&tam,sizeof(int),0);
-    if(r<0){
-      perror("Error recv tamano nombre");
-      exit(-1);
-    }
-    r = recv(clientId,recibiendo->nombre,tam,0);
-    if(r<0){
-  	perror("Error recv nombre");
-  	exit(-1);
-    }
-    r = recv(clientId,&recibiendo->edad,sizeof(int),0);
-    if(r<0){
-          perror("Error recv edad");
-          exit(-1);
-    }
-    r= recv(clientId,&tam,sizeof(int),0);
-    if(r<0){
-        perror("Error recv tam raza");
-        exit(-1);
-    }
-    r = recv(clientId,recibiendo->raza,tam,0);
-    if(r<0){
-         perror("Error recv raza");
-         exit(-1);
-    }
-    r = recv(clientId,&recibiendo->estatura,sizeof(int),0);
-    if(r<0){
-        perror("Error recv estatura");
-        exit(-1);
-    }
-    r = recv(clientId,&recibiendo->peso,sizeof(float),0);
-    if(r<0){
-           perror("Error recv peso");
-           exit(-1);
-    }
-    r = recv(clientId,&recibiendo->sexo,sizeof(char),0);
-    if(r<0){
-            perror("Error recv sexo");
-                    exit(-1);
-    }
+    struct dogType *recibiendo=NULL;
+    recibiendo=ap;
+    int tam=sizeof(struct dogType),r=0,tamTotal=0;
+    do{
+    r=recv(clientId,recibiendo+tamTotal,tam-tamTotal,0);
+	if(r<0){perror("Error al enviar perro");exit(-1);}    
+    tamTotal=tamTotal+r;
+    printf("Recibido %i total %i/%i",r,tamTotal,tam);
+    }while(tam-tamTotal!=0);
 }
 void sendPerro(void *ap,int clientId){
   struct dogType *enviado;
   enviado = ap;
-  int r, tam;
-  tam=tamano(enviado->nombre);
-  r=send(clientId,&tam,sizeof(int),0);
-  if(r<0){
-  perror("error en send tam nombre");
-  exit(-1);
-  }
-  r=send(clientId,enviado->nombre,tam,0);
-  if(r<0){
-    perror("error en send nombre");
-    exit(-1);
-  }
-  r=send(clientId,&enviado->edad,sizeof(int),0);
-  if(r<0){
-    perror("error en send edad");
-    exit(-1);
-  }
-  tam=tamano(enviado->raza);
-  r=send(clientId,&tam,sizeof(int),0);
-  if(r<0){
-    perror("error en send tam raza");
-    exit(-1);
-  }
-  r=send(clientId,enviado->raza,tam,0);
-  if(r<0){
-     perror("error en send raza");
-     exit(-1);
-  }
-  r=send(clientId,&enviado->estatura,sizeof(int),0);
-  if(r<0){
-    perror("error en send estatura");
-    exit(-1);
-  }
-  r=send(clientId,&enviado->peso,sizeof(float),0);
-  if(r<0){
-     perror("error en send peso");
-     exit(-1);
-  }
-  r=send(clientId,&enviado->sexo,sizeof(char),0);
-  if(r<0){
-    perror("error en send sexo");
-    exit(-1);
-  }
+  int tam=sizeof(struct dogType),r=0,tamTotal=0;
+    do{
+    r=send(clientId,enviado+tamTotal,tam-tamTotal,0);
+    	if(r<0){perror("Error al enviar perro");exit(-1);}
+    tamTotal=tamTotal+r;
+    printf("Enviado %i total %i/%i",r,tamTotal,tam);
+    }while(tam-tamTotal!=0);
 }
+
 int  tamano(char *palabra){
 	int i=0;
 	while(palabra[i]!='\0')

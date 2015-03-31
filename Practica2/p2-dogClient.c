@@ -314,14 +314,16 @@ void cargar(void *ap,int clientId){
 	while(getchar()!='\n');
 	printf("\n Edad: ");
 	scanf(" %d",&ingreso->edad);
+	while(getchar()!='\n');
 	printf("\n Raza: ");
 	scanf(" %15[^\n]",ingreso->raza);
 	while(getchar()!='\n');
 	printf("\n Estatura: ");
 	scanf(" %i",&ingreso->estatura);
-
+	while(getchar()!='\n');
 	printf("\n Peso: ");
 	scanf(" %f",&ingreso->peso);
+	while(getchar()!='\n');
 	do{	
 		printf("\n Sexo M/H: ");
 		scanf(" %c",&ingreso->sexo);

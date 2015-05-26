@@ -1,0 +1,35 @@
+ practica #2 Sistemas Operativos Grupo #2 
+
+Autores: Sergio Alejandro Diaz Pinilla ......seradiazpin@unal.edu.co 
+	 Osmar Alejandro Castillo Lancheros ......oacastillol@unal.edu.co
+	 
+Este programa es un gestor para el manejo de datos de una veterinaria, por medio de un servidor y un cliente; el servidor maneja todos
+los datos los cuales son almacenados en un archivo, mientras el cliente solo envia peticiones e imprime lo que el servidor le envia.
+
+1. Para su compilacion ingrese a la carpeta e invoque el comando make el se encargara de compilar tanto el cliente como el servidor.
+Solo desde S.O. basados en UNIX
+
+2. para su ejecucion debe usar: 
+	para el servidor
+		./p2-dogServer	
+	para el cliente
+		./p2-dogClient <ip del servidor>    (por ejemplo si se va a ejecutar localmente debe usar ./p2-dogClient 127.0.0.1)
+
+3. Importante en el archivo dataDogs.dat se almacena la informacion necesaria para el funcionamiento correcto del programa, 
+por favor no eliminar ni modificar con aplicaciones externas a la indicada. Ademas el archivo serverDogs.log registra las operaciones 
+hechas por los clientes, por favor no lo borre ni modifique, si lo desea mirar puede usar cualquier editor de texto; pero si llega a fallar
+puede mirar su contenido usando el comando <cat serverDogs.log> desde cualquier terminal.
+
+
+--------------------------------------------------------------------
+Advertencias.
+
+- A la hora de ingresar informacion a los registros asegurece de ingresar valores adecuados, recuerde que el nombre es maximo de 32 caracteres
+la edad es un numero entero al igual que la estatura la raza es de maximo 16 caracteres y el peso es un numero racional para que la ejecucion 
+no tenga errores.
+
+- Los rangos se manejan en una escala de 0 a x-1
+
+-------------------------------------------------------------------
+Mas informacion https://github.com/seradiazpin/SistemasOperativos/tree/nueva/Practica2
+	

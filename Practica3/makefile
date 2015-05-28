@@ -1,3 +1,3 @@
 all: 
-	gcc p2-dogServer.c -o p2-dogServer
-	gcc p2-dogClient.c -o p2-dogClient
+	gcc p3-dogServer.c -o p3-dogServer
+	gcc p3-dogClient.c -o p3-dogClient

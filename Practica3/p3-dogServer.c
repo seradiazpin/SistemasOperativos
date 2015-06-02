@@ -53,7 +53,7 @@ int tamano();
 void minToMay();
 int numRegs();
 void writeLog();
-void hiloCliente();
+void *hiloCliente();
 
 int main(){
 	pthread_mutex_t mutex;
@@ -90,10 +90,10 @@ int main(){
 
 		struct args_struct args;
 		args.clienteId = clienteId;
-    	args.ipAddr = inet_ntoa(client.sin_addr);
-    	args.mutex = mutex;
+	    	args.ipAddr = inet_ntoa(client.sin_addr);
+ 	   	args.mutex = mutex;
     	
-		if (pthread_create(&some_thread, NULL, &hiloCliente, (void *)&args) != 0) {
+		if (pthread_create(&some_thread, NULL, hiloCliente, &args) != 0) {
 	    	printf("Uh-oh!\n");
 	    	return -1;
     	}
@@ -123,7 +123,7 @@ int isFull(){
     }
 }
 
-void hiloCliente(void *arguments){
+void *hiloCliente(void *arguments){
 	struct args_struct *args = arguments;
 	atenderCliente(args->clienteId,args->ipAddr,args->mutex);
 }

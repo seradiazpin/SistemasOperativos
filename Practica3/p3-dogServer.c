@@ -80,11 +80,6 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
-	pid =fork();
-	if ( pid < 0 ){
-			perror("\n Error en fork: ");
-			exit(-1);
-	}
 	while(isFull()){
 		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)

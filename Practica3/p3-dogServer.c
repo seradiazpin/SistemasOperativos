@@ -58,7 +58,8 @@ void *hiloCliente();
 int main(){
 	pthread_mutex_t mutex;
 	pthread_cond_t vacio,lleno;
-	pthread_t some_thread;
+	pthread_t hilos [BACKLOG];
+	int ocupado[BACKLOG];
 	int serverId,clienteId,r,status,shmId,userTmp;
 	struct sockaddr_in  client;
 	socklen_t tamano=0;
@@ -80,40 +81,65 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
+
+	for(int i = 0;i< BACKLOG;i++){
+		ocupado[i]=1;
+	}
+
+	pid = fork();
+
+	int hiloId;
 	while(isFull()){
-		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
+
 		if(clienteId<0)
 		{
 			perror("\n Error en accept: \n");
 			exit(-1);
 		}
 
-		struct args_struct args;
-		args.clienteId = clienteId;
-	    	args.ipAddr = inet_ntoa(client.sin_addr);
- 	   	args.mutex = mutex;
-    	
-		if (pthread_create(&some_thread, NULL, hiloCliente, &args) != 0) {
-	    	printf("Uh-oh!\n");
-	    	return -1;
-    	}
-    	pthread_join(some_thread, NULL);
-		r=close(clienteId);
-	    if(r<0){
-	    	perror("Error al cerrar cliente");
-	    	exit(-1);
+		if ( pid < 0 ){
+			perror("\n Error en fork: ");
+			exit(-1);
+		}
+		if(pid==0){ //Somos hijos
+			printf("ENTRO\n");
+			clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
+			hiloId = hiloLibre(ocupado);
+			*users=*users+1;
+			userTmp=*users;
+			struct args_struct args;
+			args.clienteId = clienteId;
+		    args.ipAddr = inet_ntoa(client.sin_addr);
+	 	   	args.mutex = mutex;
+			printf("antes hilo\n");
+			ocupado[hiloId] = 0;
+			if (pthread_create(&hilos[hiloId], NULL, hiloCliente, &args) != 0) {
+		    	printf("Uh-oh!\n");
+		    	return -1;
+	    	}
+	    	pthread_join(hilos[hiloId], NULL);
+	    	printf("HOLAXD\n");
+			r=close(clienteId);
+			ocupado[hiloId] = 1;
+		    if(r<0){
+		    	perror("Error al cerrar cliente");
+		    	exit(-1);
+		    }  
+		}else{	//soy el padre         
 	    }
 
-        
+    	
     }
     r=close(serverId);
 	    if(r<0){
 	    	perror("Error al cerrar servidor");
 	    	exit(-1);
-	   }
+		}
     exit(0);
 	    
 }
+
+
 
 int isFull(){    
     if(*users<=BACKLOG){    		
@@ -121,6 +147,16 @@ int isFull(){
     }else{
           return 0; 	//para continuar el while
     }
+}
+
+
+
+int hiloLibre(int ocupado[]){
+	int libre = 0;
+	while(ocupado[libre]!= 1){
+		libre++;
+	}
+	return libre;
 }
 
 void *hiloCliente(void *arguments){

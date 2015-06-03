@@ -42,7 +42,7 @@ int crear();
 FILE* openFileR();
 FILE* openFileA();
 void fileEnd();
-void atenderCliente(); 
+void *atenderCliente(); 
 void ingresar();
 void leer();
 void borrar();
@@ -53,7 +53,6 @@ int tamano();
 void minToMay();
 int numRegs();
 void writeLog();
-void *hiloCliente();
 
 int main(){
 	pthread_mutex_t mutex;
@@ -93,7 +92,7 @@ int main(){
 	    	args.ipAddr = inet_ntoa(client.sin_addr);
  	   	args.mutex = mutex;
     	
-		if (pthread_create(&some_thread, NULL, hiloCliente, &args) != 0) {
+		if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
 	    	printf("Uh-oh!\n");
 	    	return -1;
     	}
@@ -123,10 +122,6 @@ int isFull(){
     }
 }
 
-void *hiloCliente(void *arguments){
-	struct args_struct *args = arguments;
-	atenderCliente(args->clienteId,args->ipAddr,args->mutex);
-}
 
 int crear(){                     //crea el socket del servidor
 	int serverId, opt=1,r;
@@ -154,37 +149,30 @@ int crear(){                     //crea el socket del servidor
 	return serverId;
 }
 
-void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //esta funcion atiende al cliente
+void *atenderCliente(void *arguments){
+	struct args_struct *args = arguments;
 	int vivo=0;
 	int r,opc=0;
-	printf("cliente, %i\n", clientId);
+	printf("cliente, %i\n",args->clienteId);
 	do{	
-		r= recv(clientId,&opc,sizeof(int),0);
+		r= recv(args->clienteId,&opc,sizeof(int),0);
 		if(r<0){
 			perror("\n Error al recibir solicitud");
 			exit(-1);
 		}
 		switch(opc){
 			case 1 :
-				pthread_mutex_lock(&mutex);
-				ingresar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+				ingresar(arguments);
 				break;
 
 			case 2 : 
-				pthread_mutex_lock(&mutex);
-				leer(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+				leer(arguments);
 				break;
 			case 3 : 
-				pthread_mutex_lock(&mutex);
-				borrar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+				borrar(arguments);
 				break;
 			case 4 :
-				pthread_mutex_lock(&mutex);
-				buscar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+				buscar(arguments);
 				break;
 			case 5 : *users = *users-1;
 				break;
@@ -205,25 +193,27 @@ void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //est
 	}while(opc!=5);
 }
 
-void ingresar(int clientId, char *ipAddr){
+void ingresar(void *arguments){
+	struct args_struct *args = arguments;
 	struct dogType *ingreso = NULL;
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
 	int r;
-	recvPerro(ingreso,clientId);
-	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
+	recvPerro(ingreso,args->clienteId);
+	file=openFileA("dataDogs.dat",args->mutex);        //Abrir el archivo para escribir
 	int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
 	if(data<=0){
 		perror("Error de escritura");
 	}
-	fileEnd(file);
-	writeLog(1,ingreso,ipAddr);
+	fileEnd(file,args->mutex);
+	writeLog(1,ingreso,args->ipAddr,args->mutex);
 	free(ingreso);
 
 }
 
 
-void leer(int clientId, char *ipAddr){
+void leer(void *arguments){
+	struct args_struct *args = arguments;
 	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;
 	long tamano=sizeof(struct dogType);
@@ -231,39 +221,40 @@ void leer(int clientId, char *ipAddr){
 	FILE *file;
 	do{
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(args->clienteId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
 	int opcion = 0;
-	r = recv(clientId,&opcion,sizeof(int),0);
+	r = recv(args->clienteId,&opcion,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
 	}
-	file=openFileR();
+	file=openFileR(args->mutex);
 	rewind(file);
 	if(( numeroRegistros > 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0) && fread(lectura,sizeof(struct dogType),1,file)==1){
 		found=1;
 		
 	}else{
-		fileEnd(file);
+		fileEnd(file, args->mutex);
 	}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(args->clienteId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
 		}
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
-		sendPerro(lectura,clientId);
-		fileEnd(file);
-		writeLog(2,lectura,ipAddr);
+		sendPerro(lectura,args->clienteId);
+		fileEnd(file,args->mutex);
+		writeLog(2,lectura,args->ipAddr);
 	}
 	free(lectura);
 }
-void buscar(int clientId,char *ipAddr){
+void buscar(void *arguments){
+	struct args_struct *args = arguments;
 	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
@@ -271,22 +262,22 @@ void buscar(int clientId,char *ipAddr){
 	FILE *file;
 	busqueda = malloc(tamano);
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(args->clienteId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
-	r=recv(clientId,&tam,sizeof(int),0);
+	r=recv(args->clienteId,&tam,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir tamano de la palabra");
 		exit(-1);
 	}
-	r=recv(clientId,opcion,tam,0);
+	r=recv(args->clienteId,opcion,tam,0);
 	if(r<0){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
-	file=openFileR();
+	file=openFileR(args->mutex);
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
 	for(numRegistro=0;numRegistro*tamano<tamArchivo; numRegistro++){
@@ -301,35 +292,35 @@ void buscar(int clientId,char *ipAddr){
 		}else{
 			siguiente=0;
 		}
-		r=send(clientId,&siguiente,sizeof(int),0);
+		r=send(args->clienteId,&siguiente,sizeof(int),0);
 		if(r<0){
 			perror("Error al enviar siguiente");
 			exit(-1);		
 		}
 		if(siguiente==1){
-		sendPerro(busqueda,clientId);
+		sendPerro(busqueda,args->clienteId);
 		encontrados++;
 		}
 	
 	}
 	siguiente=-1;
-	r=send(clientId,&siguiente,sizeof(int),0);
+	r=send(args->clienteId,&siguiente,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el ultimo siguiente");
 		exit(-1);
 	}
-	r=send(clientId,&encontrados,sizeof(int),0);
+	r=send(args->clienteId,&encontrados,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el total de encontrados");
 		exit(-1);
 	}
-	fileEnd(file);
-	writeLog(4,opcion,ipAddr);
+	fileEnd(file,args->mutex);
+	writeLog(4,opcion,args->ipAddr);
 	free(busqueda);
 }
 
-void borrar(int clientId,char *ipAddr){
-	
+void borrar(void *arguments){
+	struct args_struct *args = arguments;
 	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
@@ -338,23 +329,23 @@ void borrar(int clientId,char *ipAddr){
 	do{	
 		numeroRegistros = numRegs();
 		borrado = malloc(tamano);
-		r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
+		r = send(args->clienteId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
 		if(r<0){
 			perror("Error para enviar el numero de registros");
 			exit(-1);
 		}
-		r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
+		r = recv(args->clienteId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
 		if(r<0){
 			perror("Error para recibir la opcion");
 			exit(-1);
 		}
-		file=openFileR();
+		file=openFileR(args->mutex);
 		if(fseek(file,opcion*tamano,SEEK_SET)==0 && fread(borrado,sizeof(struct dogType),1,file)==1 ){ //confirma que aun exista.	
 			found=1;	
 		}else{
-			fileEnd(file);
+			fileEnd(file,args->mutex);
 		}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(args->clienteId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
@@ -362,7 +353,7 @@ void borrar(int clientId,char *ipAddr){
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
 		fread(borrado,sizeof(struct dogType),1,file);	
-		sendPerro(borrado,clientId);//envia el perro que se borrara
+		sendPerro(borrado,args->clienteId);//envia el perro que se borrara
 		rewind(file);	
 		newfile = fopen("temp.dat","w+");
 		while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
@@ -376,15 +367,16 @@ void borrar(int clientId,char *ipAddr){
 
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
-		writeLog(3,borrado,ipAddr);
+		writeLog(3,borrado,args->ipAddr);
 	}
 	free(borrado);
-
+	pthread_mutex_unlock(&args->mutex);
 }
 
 
-FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
+FILE* openFileA(char *nombre,pthread_mutex_t mutex){  //metodo para abrir los archivos append
 	FILE *file;
+	pthread_mutex_lock(&mutex);
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
@@ -394,8 +386,9 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	}
 }
 
-FILE* openFileR(){  //metodo para abrir los archivos read
+FILE* openFileR(pthread_mutex_t mutex){  //metodo para abrir los archivos read
 	FILE *file;
+	pthread_mutex_lock(&mutex);
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
@@ -404,11 +397,12 @@ FILE* openFileR(){  //metodo para abrir los archivos read
 	}
 }
 
-void fileEnd(FILE  *file){   //metodo para cerrar los archivos
+void fileEnd(FILE  *file,pthread_mutex_t mutex){   //metodo para cerrar los archivos
 	if(fclose(file)){
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 void recvPerro(void *ap, int clientId){
@@ -450,18 +444,18 @@ void minToMay(char *string)
 		}
 	}
 }
-int numRegs(){
+int numRegs(pthread_mutex_t mutex){
 	FILE *file;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
-	file=openFileR();                         //Abre el archivo
+	file=openFileR(mutex);                         //Abre el archivo
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
 	rewind(file);
-	fileEnd(file);
+	fileEnd(file,mutex);
 	return numeroRegistros;		
 }
-void writeLog(int opcion,void *opcional,char *ipAddr){
+void writeLog(int opcion,void *opcional,char *ipAddr,pthread_mutex_t mutex){
 	int r;
 	char *accion, *palabra;
 	time_t curtime;
@@ -477,7 +471,7 @@ void writeLog(int opcion,void *opcional,char *ipAddr){
 		case 4: accion="busqueda";palabra=opcional;break;
 		default: perror("Error en log");exit(-1);break;
 	}
-	doglog=openFileA("serverDogs.log");
+	doglog=openFileA("serverDogs.log",mutex);
 	r=fprintf(doglog," [ fecha %i/%.2i/%.2i %.2i:%.2i:%.2i ] Cliente [ %s ] [ %s ] [",(local->tm_year+1900),(local->tm_mon+1),local->tm_mday,local->tm_hour,local->tm_min,local->tm_sec,ipAddr,accion);
 	if(r<=0){
 		perror("Error al escribir primera parte del log");
@@ -493,6 +487,6 @@ void writeLog(int opcion,void *opcional,char *ipAddr){
 		perror("Error al escribir segunda parte del log");
 		exit(-1);
 	}
-	fileEnd(doglog);
+	fileEnd(doglog,mutex);
 }
 

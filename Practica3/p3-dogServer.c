@@ -79,29 +79,32 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
+	pid=fork();
 	while(isFull()){
-		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
-		if(clienteId<0)
-		{
-			perror("\n Error en accept: \n");
-			exit(-1);
+		if(pid==0){
+			struct args_struct argas[BACKLOG],args;
+	//		args=desocupado(argas);
+			args.clienteId =accept(serverId,(struct sockaddr *)&client,&tamano);
+			if(clienteId<0)
+			{
+				perror("\n Error en accept: \n");
+				exit(-1);
+			}
+		    	args.ipAddr = inet_ntoa(client.sin_addr);
+	 	   	args.mutex = mutex;
+	    	
+			if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
+			    	printf("Uh-oh!\n");
+			    	return -1;
+		    	}
+		}else{
+		    	pthread_join(some_thread, NULL);
+				r=close(clienteId);
+			    if(r<0){
+			    	perror("Error al cerrar cliente");
+			    	exit(-1);
+			    }
 		}
-
-		struct args_struct args;
-		args.clienteId = clienteId;
-	    	args.ipAddr = inet_ntoa(client.sin_addr);
- 	   	args.mutex = mutex;
-    	
-		if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
-	    	printf("Uh-oh!\n");
-	    	return -1;
-    	}
-    	pthread_join(some_thread, NULL);
-		r=close(clienteId);
-	    if(r<0){
-	    	perror("Error al cerrar cliente");
-	    	exit(-1);
-	    }
 
         
     }

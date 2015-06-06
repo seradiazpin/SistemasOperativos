@@ -53,14 +53,12 @@ int tamano();
 void minToMay();
 int numRegs();
 void writeLog();
+void alistarCliente();
 
 int main(){
 	pthread_mutex_t mutex;
 	pthread_cond_t vacio,lleno;
-	pthread_t some_thread;
 	int serverId,clienteId,r,status,shmId,userTmp;
-	struct sockaddr_in  client;
-	socklen_t tamano=0;
 	key_t key=1234,keyU=3232;
 	pid_t pid, end; // identificador de procesos
 	char buffer[32], *ipAddr; // prueba de 	funcionamiento
@@ -81,22 +79,8 @@ int main(){
 	*users = 0;
 	pid=fork();
 	while(isFull()){
-		if(pid==0){
-			struct args_struct argas[BACKLOG],args;
-	//		args=desocupado(argas);
-			args.clienteId =accept(serverId,(struct sockaddr *)&client,&tamano);
-			if(clienteId<0)
-			{
-				perror("\n Error en accept: \n");
-				exit(-1);
-			}
-		    	args.ipAddr = inet_ntoa(client.sin_addr);
-	 	   	args.mutex = mutex;
-	    	
-			if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
-			    	printf("Uh-oh!\n");
-			    	return -1;
-		    	}
+		if(pid==0){			
+	    		alistarCliente(serverId,&mutex);			
 		}else{
 		    	pthread_join(some_thread, NULL);
 				r=close(clienteId);
@@ -151,7 +135,26 @@ int crear(){                     //crea el socket del servidor
 	}
 	return serverId;
 }
-
+void alistarCliente(int serverId,pthread_mutex_t *mutex){
+	socklen_t tamano=0;	
+	pthread_t some_thread;
+	struct sockaddr_in  client;
+	struct args_struct args;
+	args.clienteId =accept(serverId,(struct sockaddr *)&client,&tamano);
+	if(args.clienteId<0)
+	{
+		perror("\n Error en accept: \n");
+		exit(-1);
+	}
+	args.ipAddr = inet_ntoa(client.sin_addr);
+	args.mutex = *mutex;
+	if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
+			    	perror("Uh-oh!\n");
+			    	exit( -1);
+	}else{
+		*users=*users+1;
+	}
+}
 void *atenderCliente(void *arguments){
 	struct args_struct *args = arguments;
 	int vivo=0;

@@ -32,10 +32,11 @@ struct args_struct
 {
 	int	clienteId;
 	char *ipAddr;
-	pthread_mutex_t mutex;
+//	pthread_mutex_t mutex;
 };
 
 int *users;  // *writeFile,variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+pthread_mutex_t mutex;
 
 int isFull();
 int crear();
@@ -56,7 +57,6 @@ void writeLog();
 void alistarCliente();
 
 int main(){
-	pthread_mutex_t mutex;
 	pthread_cond_t vacio,lleno;
 	int serverId,clienteId,r,status,shmId,userTmp;
 	key_t key=1234,keyU=3232;
@@ -68,8 +68,6 @@ int main(){
 		perror("Error en shmget");
 		exit(-1);
 	}
-	//writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
-	//*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
 	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
 	if(shmId<0){
 		perror("Error en shmget users");
@@ -80,14 +78,27 @@ int main(){
 	pid=fork();
 	while(isFull()){
 		if(pid==0){			
-	    		alistarCliente(serverId,&mutex);			
+	    		alistarCliente(serverId);			
 		}else{
+			/*if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
+			    int dead=0;
+			    while(dead<userTmp-*users){
+				    end=wait(&status);
+				    if(end==-1){
+				       perror("\nError al esperar al hijo \n");
+				       exit(-1);
+				    }
+				    dead++;
+			    }			
+			}
+			*users=*users+1;
+			userTmp=*users;
 		    	pthread_join(some_thread, NULL);
 				r=close(clienteId);
 			    if(r<0){
 			    	perror("Error al cerrar cliente");
 			    	exit(-1);
-			    }
+			    }*/
 		}
 
         
@@ -135,7 +146,7 @@ int crear(){                     //crea el socket del servidor
 	}
 	return serverId;
 }
-void alistarCliente(int serverId,pthread_mutex_t *mutex){
+void alistarCliente(int serverId){
 	socklen_t tamano=0;	
 	pthread_t some_thread;
 	struct sockaddr_in  client;
@@ -147,7 +158,7 @@ void alistarCliente(int serverId,pthread_mutex_t *mutex){
 		exit(-1);
 	}
 	args.ipAddr = inet_ntoa(client.sin_addr);
-	args.mutex = *mutex;
+//	args.mutex = *mutex;
 	if (pthread_create(&some_thread, NULL, atenderCliente, &args) != 0) {
 			    	perror("Uh-oh!\n");
 			    	exit( -1);
@@ -159,7 +170,7 @@ void *atenderCliente(void *arguments){
 	struct args_struct *args = arguments;
 	int vivo=0;
 	int r,opc=0;
-	printf("cliente, %i\n",args->clienteId);
+	printf("cliente, %i\n",*users);
 	do{	
 		r= recv(args->clienteId,&opc,sizeof(int),0);
 		if(r<0){
@@ -206,13 +217,13 @@ void ingresar(void *arguments){
 	FILE *file;
 	int r;
 	recvPerro(ingreso,args->clienteId);
-	file=openFileA("dataDogs.dat",args->mutex);        //Abrir el archivo para escribir
+	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
 	int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
 	if(data<=0){
 		perror("Error de escritura");
 	}
-	fileEnd(file,args->mutex);
-	writeLog(1,ingreso,args->ipAddr,args->mutex);
+	fileEnd(file);
+	writeLog(1,ingreso,args->ipAddr);
 	free(ingreso);
 
 }
@@ -238,13 +249,13 @@ void leer(void *arguments){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
 	}
-	file=openFileR(args->mutex);
+	file=openFileR();
 	rewind(file);
 	if(( numeroRegistros > 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0) && fread(lectura,sizeof(struct dogType),1,file)==1){
 		found=1;
 		
 	}else{
-		fileEnd(file, args->mutex);
+		fileEnd(file);
 	}
 		r = send(args->clienteId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
@@ -254,7 +265,7 @@ void leer(void *arguments){
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
 		sendPerro(lectura,args->clienteId);
-		fileEnd(file,args->mutex);
+		fileEnd(file);
 		writeLog(2,lectura,args->ipAddr);
 	}
 	free(lectura);
@@ -283,7 +294,7 @@ void buscar(void *arguments){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
-	file=openFileR(args->mutex);
+	file=openFileR();
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
 	for(numRegistro=0;numRegistro*tamano<tamArchivo; numRegistro++){
@@ -320,7 +331,7 @@ void buscar(void *arguments){
 		perror("Error al enviar el total de encontrados");
 		exit(-1);
 	}
-	fileEnd(file,args->mutex);
+	fileEnd(file);
 	writeLog(4,opcion,args->ipAddr);
 	free(busqueda);
 }
@@ -345,11 +356,11 @@ void borrar(void *arguments){
 			perror("Error para recibir la opcion");
 			exit(-1);
 		}
-		file=openFileR(args->mutex);
+		file=openFileR();
 		if(fseek(file,opcion*tamano,SEEK_SET)==0 && fread(borrado,sizeof(struct dogType),1,file)==1 ){ //confirma que aun exista.	
 			found=1;	
 		}else{
-			fileEnd(file,args->mutex);
+			fileEnd(file);
 		}
 		r = send(args->clienteId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
@@ -370,17 +381,17 @@ void borrar(void *arguments){
 
 		fclose(file);
 		fclose(newfile);
-
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
+		pthread_mutex_unlock(&mutex);
 		writeLog(3,borrado,args->ipAddr);
 	}
 	free(borrado);
-	pthread_mutex_unlock(&args->mutex);
+	
 }
 
 
-FILE* openFileA(char *nombre,pthread_mutex_t mutex){  //metodo para abrir los archivos append
+FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	FILE *file;
 	pthread_mutex_lock(&mutex);
 	file= fopen(nombre,"a+");
@@ -392,18 +403,19 @@ FILE* openFileA(char *nombre,pthread_mutex_t mutex){  //metodo para abrir los ar
 	}
 }
 
-FILE* openFileR(pthread_mutex_t mutex){  //metodo para abrir los archivos read
+FILE* openFileR(){  //metodo para abrir los archivos read
 	FILE *file;
 	pthread_mutex_lock(&mutex);
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
+		exit(-1);
 	}else{
 		return file;
 	}
 }
 
-void fileEnd(FILE  *file,pthread_mutex_t mutex){   //metodo para cerrar los archivos
+void fileEnd(FILE  *file){   //metodo para cerrar los archivos
 	if(fclose(file)){
 		perror("\nError al cerrar el archivo");
 		exit(-1);
@@ -450,15 +462,15 @@ void minToMay(char *string)
 		}
 	}
 }
-int numRegs(pthread_mutex_t mutex){
+int numRegs(){
 	FILE *file;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
-	file=openFileR(mutex);                         //Abre el archivo
+	file=openFileR();                         //Abre el archivo
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;
 	rewind(file);
-	fileEnd(file,mutex);
+	fileEnd(file);
 	return numeroRegistros;		
 }
 void writeLog(int opcion,void *opcional,char *ipAddr,pthread_mutex_t mutex){
@@ -477,7 +489,7 @@ void writeLog(int opcion,void *opcional,char *ipAddr,pthread_mutex_t mutex){
 		case 4: accion="busqueda";palabra=opcional;break;
 		default: perror("Error en log");exit(-1);break;
 	}
-	doglog=openFileA("serverDogs.log",mutex);
+	doglog=openFileA("serverDogs.log");
 	r=fprintf(doglog," [ fecha %i/%.2i/%.2i %.2i:%.2i:%.2i ] Cliente [ %s ] [ %s ] [",(local->tm_year+1900),(local->tm_mon+1),local->tm_mday,local->tm_hour,local->tm_min,local->tm_sec,ipAddr,accion);
 	if(r<=0){
 		perror("Error al escribir primera parte del log");
@@ -493,6 +505,6 @@ void writeLog(int opcion,void *opcional,char *ipAddr,pthread_mutex_t mutex){
 		perror("Error al escribir segunda parte del log");
 		exit(-1);
 	}
-	fileEnd(doglog,mutex);
+	fileEnd(doglog);
 }
 

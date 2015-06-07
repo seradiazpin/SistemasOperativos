@@ -11,9 +11,7 @@
 # include <string.h>
 # include <time.h>
 # include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
+
 
 #define PORT 9510
 #define BACKLOG 32
@@ -28,14 +26,7 @@ struct dogType
    char  sexo;
 };
 
-struct args_struct
-{
-	int	clienteId;
-	char *ipAddr;
-	pthread_mutex_t mutex;
-};
-
-int *users;  // *writeFile,variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
 
 int isFull();
 int crear();
@@ -53,13 +44,8 @@ int tamano();
 void minToMay();
 int numRegs();
 void writeLog();
-void *hiloCliente();
 
 int main(){
-	pthread_mutex_t mutex;
-	pthread_cond_t vacio,lleno;
-	pthread_t hilos [BACKLOG];
-	int ocupado[BACKLOG];
 	int serverId,clienteId,r,status,shmId,userTmp;
 	struct sockaddr_in  client;
 	socklen_t tamano=0;
@@ -72,8 +58,8 @@ int main(){
 		perror("Error en shmget");
 		exit(-1);
 	}
-	//writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
-	//*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
+	writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
+	*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
 	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
 	if(shmId<0){
 		perror("Error en shmget users");
@@ -81,65 +67,67 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
-
-	for(int i = 0;i< BACKLOG;i++){
-		ocupado[i]=1;
-	}
-
-	pid = fork();
-
-	int hiloId;
 	while(isFull()){
-
+		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
 		{
 			perror("\n Error en accept: \n");
 			exit(-1);
 		}
-
+		pid =fork();
 		if ( pid < 0 ){
 			perror("\n Error en fork: ");
 			exit(-1);
 		}
 		if(pid==0){ //Somos hijos
-			printf("ENTRO\n");
-			clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
-			hiloId = hiloLibre(ocupado);
+			ipAddr=inet_ntoa(client.sin_addr);
+	      		atenderCliente(clienteId,ipAddr);  //atender usuario
+			close(clienteId);
+	        	close(serverId);
+	        	exit(0);
+		}else{	//soy el padre
+			if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
+			    int dead=0;
+			    while(dead<userTmp-*users){
+				    end=wait(&status);
+				    if(end==-1){
+				       perror("\nError al esperar al hijo \n");
+				       exit(-1);
+				    }
+				    dead++;
+			    }			
+			}
 			*users=*users+1;
 			userTmp=*users;
-			struct args_struct args;
-			args.clienteId = clienteId;
-		    args.ipAddr = inet_ntoa(client.sin_addr);
-	 	   	args.mutex = mutex;
-			printf("antes hilo\n");
-			ocupado[hiloId] = 0;
-			if (pthread_create(&hilos[hiloId], NULL, hiloCliente, &args) != 0) {
-		    	printf("Uh-oh!\n");
-		    	return -1;
+	                    
 	    	}
-	    	pthread_join(hilos[hiloId], NULL);
-	    	printf("HOLAXD\n");
-			r=close(clienteId);
-			ocupado[hiloId] = 1;
+	    }
+	    if(pid!=0){
+		    int r;
+		    r=close(clienteId);
 		    if(r<0){
 		    	perror("Error al cerrar cliente");
 		    	exit(-1);
-		    }  
-		}else{	//soy el padre         
+		    }
+		    r=close(serverId);
+		    if(r<0){
+		    	perror("Error al cerrar servidor");
+		    	exit(-1);
+		    }
+		    while (*users > 0){						//Cuando el servidor no acepta mas clientes
+			    end=wait(&status);
+			    if(end==-1){
+			       perror("\nError al esperar al hijo \n");
+			       exit(-1);
+			    }
+		    }
+		    
+	    }else{
+	    
+	   	 exit(0); //si el hijo llega aca no tiene nada que hacer
 	    }
-
-    	
-    }
-    r=close(serverId);
-	    if(r<0){
-	    	perror("Error al cerrar servidor");
-	    	exit(-1);
-		}
-    exit(0);
 	    
 }
-
-
 
 int isFull(){    
     if(*users<=BACKLOG){    		
@@ -147,21 +135,6 @@ int isFull(){
     }else{
           return 0; 	//para continuar el while
     }
-}
-
-
-
-int hiloLibre(int ocupado[]){
-	int libre = 0;
-	while(ocupado[libre]!= 1){
-		libre++;
-	}
-	return libre;
-}
-
-void *hiloCliente(void *arguments){
-	struct args_struct *args = arguments;
-	atenderCliente(args->clienteId,args->ipAddr,args->mutex);
 }
 
 int crear(){                     //crea el socket del servidor
@@ -190,10 +163,9 @@ int crear(){                     //crea el socket del servidor
 	return serverId;
 }
 
-void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //esta funcion atiende al cliente
+void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al cliente
 	int vivo=0;
 	int r,opc=0;
-	printf("cliente, %i\n", clientId);
 	do{	
 		r= recv(clientId,&opc,sizeof(int),0);
 		if(r<0){
@@ -202,25 +174,17 @@ void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //est
 		}
 		switch(opc){
 			case 1 :
-				pthread_mutex_lock(&mutex);
 				ingresar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
 				break;
 
 			case 2 : 
-				pthread_mutex_lock(&mutex);
 				leer(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
 				break;
 			case 3 : 
-				pthread_mutex_lock(&mutex);
 				borrar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
 				break;
 			case 4 :
-				pthread_mutex_lock(&mutex);
 				buscar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
 				break;
 			case 5 : *users = *users-1;
 				break;
@@ -247,14 +211,18 @@ void ingresar(int clientId, char *ipAddr){
 	FILE *file;
 	int r;
 	recvPerro(ingreso,clientId);
-	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
-	int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
-	if(data<=0){
-		perror("Error de escritura");
+	do{
+	if(*writeFile==0){
+		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
+		int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
+		if(data<=0){
+			perror("Error de escritura");
+		}
+		fileEnd(file);
+		writeLog(1,ingreso,ipAddr);
+		free(ingreso);
 	}
-	fileEnd(file);
-	writeLog(1,ingreso,ipAddr);
-	free(ingreso);
+	}while(*writeFile==1);
 
 }
 
@@ -278,6 +246,7 @@ void leer(int clientId, char *ipAddr){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
 	}
+	while(*writeFile);
 	file=openFileR();
 	rewind(file);
 	if(( numeroRegistros > 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0) && fread(lectura,sizeof(struct dogType),1,file)==1){
@@ -322,6 +291,7 @@ void buscar(int clientId,char *ipAddr){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
+	while(*writeFile);
 	file=openFileR();
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
@@ -384,6 +354,7 @@ void borrar(int clientId,char *ipAddr){
 			perror("Error para recibir la opcion");
 			exit(-1);
 		}
+		while(*writeFile); //espera mientras desocupan el archivo
 		file=openFileR();
 		if(fseek(file,opcion*tamano,SEEK_SET)==0 && fread(borrado,sizeof(struct dogType),1,file)==1 ){ //confirma que aun exista.	
 			found=1;	
@@ -415,12 +386,14 @@ void borrar(int clientId,char *ipAddr){
 		writeLog(3,borrado,ipAddr);
 	}
 	free(borrado);
+	*writeFile=0;
 
 }
 
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	FILE *file;
+	*writeFile=1;
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
@@ -432,6 +405,7 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 
 FILE* openFileR(){  //metodo para abrir los archivos read
 	FILE *file;
+	*writeFile=1;
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
@@ -445,6 +419,7 @@ void fileEnd(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
+	*writeFile=0;
 }
 
 void recvPerro(void *ap, int clientId){
@@ -490,6 +465,7 @@ int numRegs(){
 	FILE *file;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
+	while(*writeFile);
 	file=openFileR();                         //Abre el archivo
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;

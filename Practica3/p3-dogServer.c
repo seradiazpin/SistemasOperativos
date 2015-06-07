@@ -195,7 +195,7 @@ void *atenderCliente(void *arguments){
 				break;
 			case 0 : *users = *users-1;
 				perror("\nEl usuario se desconecto repentinamente");
-				exit(-1);
+				pthread_exit(NULL);
 				break;
 			default : perror ("\nOpcion invalida");
 				  opc=0;
@@ -205,7 +205,7 @@ void *atenderCliente(void *arguments){
 		if(vivo>20){
 			*users = *users-1;
 			perror("\nEl usuario se desconecto repentinamente");
-			exit(-1);
+			pthread_exit(NULL);
 		}
 	}while(opc!=5);
 }

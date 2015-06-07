@@ -117,7 +117,7 @@ int main(){
 		    	printf("Uh-oh!\n");
 		    	return -1;
 	    	}
-	    	pthread_join(hilos[hiloId], NULL);
+	    	//pthread_join(hilos[hiloId], NULL);
 	    	printf("HOLAXD\n");
 			r=close(clienteId);
 			ocupado[hiloId] = 1;
@@ -125,7 +125,8 @@ int main(){
 		    	perror("Error al cerrar cliente");
 		    	exit(-1);
 		    }  
-		}else{	//soy el padre         
+		}else{	//soy el padre  
+			//clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);       
 	    }
 
     	
@@ -218,9 +219,7 @@ void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //est
 				pthread_mutex_unlock(&mutex);
 				break;
 			case 4 :
-				pthread_mutex_lock(&mutex);
-				buscar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+				buscar(clientId,ipAddr,mutex);
 				break;
 			case 5 : *users = *users-1;
 				break;
@@ -299,7 +298,7 @@ void leer(int clientId, char *ipAddr){
 	}
 	free(lectura);
 }
-void buscar(int clientId,char *ipAddr){
+void buscar(int clientId,char *ipAddr,pthread_mutex_t mutex){
 	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
@@ -322,6 +321,7 @@ void buscar(int clientId,char *ipAddr){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
+	pthread_mutex_lock(&mutex);
 	file=openFileR();
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
@@ -362,6 +362,7 @@ void buscar(int clientId,char *ipAddr){
 	fileEnd(file);
 	writeLog(4,opcion,ipAddr);
 	free(busqueda);
+	pthread_mutex_unlock(&mutex);
 }
 
 void borrar(int clientId,char *ipAddr){

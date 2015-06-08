@@ -40,6 +40,7 @@ int desocupar();
 int isFull();
 int crear();
 void *crearClientes();
+void *eliminarClientes();
 FILE* openFileR();
 FILE* openFileA();
 void fileEnd();
@@ -58,7 +59,8 @@ void writeLog();
 int main(){
 	int serverId,r,status,shmId,userTmp;
 	key_t keyU=3232;
-	pid_t pid, end; // identificador de procesos
+//	pid_t pid, end; // identificador de procesos
+	pthread_t alfa, omega;
 	serverId=crear();	
 	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
 	if(shmId<0){
@@ -67,50 +69,11 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
-		if(pid==0){ //Somos hijo
-			
-		}else{	//soy el padre
-			if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
-			    int dead=0;
-			    while(dead<userTmp-*users){
-				    end=wait(&status);
-				    if(end==-1){
-				       perror("\nError al esperar al hijo \n");
-				       exit(-1);
-				    }
-				    dead++;
-			    }			
-			}
-			*users=*users+1;
-			userTmp=*users;
-	                    
-	    	}
-	    }
-	    if(pid!=0){
-		    int r;
-		    r=close(clienteId);
-		    if(r<0){
-		    	perror("Error al cerrar cliente");
-		    	exit(-1);
-		    }
-		    r=close(serverId);
-		    if(r<0){
-		    	perror("Error al cerrar servidor");
-		    	exit(-1);
-		    }
-		    while (*users > 0){						//Cuando el servidor no acepta mas clientes
-			    end=wait(&status);
-			    if(end==-1){
-			       perror("\nError al esperar al hijo \n");
-			       exit(-1);
-			    }
-		    }
-		    
-	    }else{
-	    
-	   	 exit(0); //si el hijo llega aca no tiene nada que hacer
-	    }
-	    
+	pthread_create(&alfa,NULL,crearClientes,&serverId);
+	pthread_create(&omega,NULL,eliminarClientes,NULL);
+	pthread_join(omega,NULL);
+	pthread_join(alfa,NULL);
+	exit(0);
 }
 int vacio(){
 	int i=0;
@@ -147,13 +110,15 @@ void *crearClientes(int serverId){
 		clientes[num]=hilo;
 		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
 		    	printf("Uh-oh!\n");
+		}else{
+			*users=*users+1;		
 		}
 	}
 	close(clienteId);
 	if(close(serverId)==0){
 		on=0;
 	}
-	exit(0);
+	pthread_exit(0);
 }
 void *eliminarClientes(){
 	int dead,i;
@@ -162,14 +127,15 @@ void *eliminarClientes(){
 		if(dead>0){
 		pthread_join(clientes[dead].hilo,NULL);
 		i=dead;
-		while(&clientes[i+1]!=NULL && i<31){
-		clientes[i]=clientes[i+1];
-		i++;
-		}
-		}
-
-		
+		while(&clientes[i+1]!=NULL && i<BACKLOG-1){
+			clientes[i]=clientes[i+1];
+				i++;
+			}
+		free(&clientes[i+1]);
+		*users=*users-1;
+		}		
 	}
+	pthread_exit(0);
 }
 
 int isFull(){    
@@ -209,6 +175,7 @@ int crear(){                     //crea el socket del servidor
  //esta funcion atiende al cliente
 void *atenderCliente(void *cliente){    
 	struct hijos *hilo=cliente;
+	hilo->ocupado=1;
 	int vivo=0;
 	int r,opc=0;
 	do{	
@@ -228,11 +195,11 @@ void *atenderCliente(void *cliente){
 				break;
 			case 4 :buscar(cliente);
 				break;
-			case 5 : *users = *users-1;
+			case 5 : hilo->ocupado=0;
 				break;
-			case 0 : *users = *users-1;
+			case 0 : hilo->ocupado=0;
 				perror("\nEl usuario se desconecto repentinamente");
-				exit(-1);
+				opc=5;
 				break;
 			default : perror ("\nOpcion invalida");
 				  opc=0;
@@ -240,11 +207,11 @@ void *atenderCliente(void *cliente){
 				  break;
 		}
 		if(vivo>20){
-			*users = *users-1;
 			perror("\nEl usuario se desconecto repentinamente");
-			exit(-1);
+			opc=5;
 		}
 	}while(opc!=5);
+	pthread_exit(0);
 }
 
 void ingresar(void *cliente){    
@@ -254,18 +221,15 @@ void ingresar(void *cliente){
 	FILE *file;
 	int r;
 	recvPerro(ingreso,hilo->clientId);
-	do{
-	if(*writeFile==0){
-		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
-		int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
-		if(data<=0){
-			perror("Error de escritura");
-		}
-		fileEnd(file);
-		writeLog(1,ingreso,hilo->ipAddr);
-		free(ingreso);
+	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
+	int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
+	if(data<=0){
+		perror("Error de escritura");
 	}
-	}while(*writeFile==1);
+	fileEnd(file);
+	writeLog(1,ingreso,hilo->ipAddr);
+	free(ingreso);	
+	
 
 }
 
@@ -290,7 +254,6 @@ void leer(void *cliente){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
 	}
-	while(*writeFile);
 	file=openFileR();
 	rewind(file);
 	if(( numeroRegistros > 0 )&& (fseek(file,opcion*tamano,SEEK_SET)==0) && fread(lectura,sizeof(struct dogType),1,file)==1){
@@ -336,7 +299,6 @@ void buscar(void *cliente){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
-	while(*writeFile);
 	file=openFileR();
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
@@ -399,7 +361,6 @@ void borrar(void *cliente){
 			perror("Error para recibir la opcion");
 			exit(-1);
 		}
-		while(*writeFile); //espera mientras desocupan el archivo
 		file=openFileR();
 		if(fseek(file,opcion*tamano,SEEK_SET)==0 && fread(borrado,sizeof(struct dogType),1,file)==1 ){ //confirma que aun exista.	
 			found=1;	
@@ -428,17 +389,17 @@ void borrar(void *cliente){
 
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
+		pthread_mutex_unlock(&mutex);
 		writeLog(3,borrado,hilo->ipAddr);
 	}
 	free(borrado);
-	*writeFile=0;
 
 }
 
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	FILE *file;
-	*writeFile=1;
+	pthread_mutex_lock(&mutex);
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
@@ -450,10 +411,11 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 
 FILE* openFileR(){  //metodo para abrir los archivos read
 	FILE *file;
-	*writeFile=1;
+	pthread_mutex_lock(&mutex);
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
+		exit(-1);
 	}else{
 		return file;
 	}
@@ -464,7 +426,7 @@ void fileEnd(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
-	*writeFile=0;
+	pthread_mutex_unlock(&mutex);
 }
 
 void recvPerro(void *ap, int clientId){
@@ -510,7 +472,6 @@ int numRegs(){
 	FILE *file;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
-	while(*writeFile);
 	file=openFileR();                         //Abre el archivo
 	fseek(file, 0, SEEK_END);
 	numeroRegistros = ftell(file)/tamano;

@@ -31,7 +31,7 @@ struct hijos{
 	char *ipAddr;
 	int ocupado,clientId; // es para saber si el hilo esta activo. 1=activo 0=termino
 };
-int *users,on;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+int *users,on,clientesI[BACKLOG];  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
 struct hijos clientes[BACKLOG];
 pthread_mutex_t mutex;
 
@@ -60,6 +60,9 @@ int main(){
 	int serverId,r,status,shmId,userTmp;
 	key_t keyU=3232;
 //	pid_t pid, end; // identificador de procesos
+	int i;
+	for(i=0;i<BACKLOG;i++)
+		clientesI[i]=0;
 	pthread_t alfa, omega;
 	serverId=crear();	
 	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
@@ -77,17 +80,17 @@ int main(){
 }
 int vacio(){
 	int i=0;
-	while(&clientes[i]!=NULL){
+	while((clientesI[i])!=0 && i<BACKLOG){
 		i++;
 	}
-	printf("%i",i);
+	printf("number %i \n",i);
 	return i;
 }
 int desocupar(){
 	int i=0;
-	if(&clientes[i]!=NULL)
+	if(clientesI[i]!=0)
 		return -1;
-	while(&clientes[i]!=NULL && clientes[i].ocupado!=1 && i<BACKLOG){
+	while(clientesI[i]!=0 && clientes[i].ocupado!=1 && i<BACKLOG){
 		i++;
 	}
 	return i;
@@ -110,8 +113,9 @@ void *crearClientes(int *serverId){
 		hilo.ipAddr = inet_ntoa(client.sin_addr);
 		hilo.ocupado=1;
 		num=vacio();
+		clientesI[num]=1;
 		clientes[num]=hilo;
-		printf("cliente numero %i",num);
+		printf("cliente numero %i \n",*users);
 		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
 		    	printf("Uh-oh!\n");
 		}else{
@@ -134,8 +138,9 @@ void *eliminarClientes(){
 		pthread_join(clientes[dead].hilo,NULL);
 		puts("Elimino");
 		i=dead;
-		while(&clientes[i+1]!=NULL && i<BACKLOG-1){
+		while(&clientesI[i+1]!=0 && i<BACKLOG-1){
 			clientes[i]=clientes[i+1];
+			clientesI[i]=clientesI[i+1];
 				i++;
 			}
 		free(&clientes[i+1]);
@@ -194,8 +199,7 @@ void *atenderCliente(void *cliente){
 			case 1 :ingresar(cliente);
 				break;
 
-			case 2 : 
-				leer(cliente);
+			case 2 :leer(cliente);
 				break;
 			case 3 :borrar(cliente);
 				break;

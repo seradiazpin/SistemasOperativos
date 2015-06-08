@@ -13,6 +13,8 @@
 # include <unistd.h>
 # include <pthread.h>
 #include <semaphore.h>  /* Semaphore */
+#include <fcntl.h>           /* For O_* constants */
+#include <sys/stat.h> 
 
 #define PORT 9510
 #define BACKLOG 5

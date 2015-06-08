@@ -11,12 +11,11 @@
 # include <string.h>
 # include <time.h>
 # include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
+# include <pthread.h>
+#include <semaphore.h>  /* Semaphore */
 
 #define PORT 9510
-#define BACKLOG 32
+#define BACKLOG 5
 
 struct dogType
 {
@@ -28,141 +27,154 @@ struct dogType
    char  sexo;
 };
 
-struct args_struct
-{
-	int	clienteId;
+struct hijos{
+	pthread_t hilo;        //el hilo
 	char *ipAddr;
-	pthread_mutex_t mutex;
+	int ocupado,clientId; // es para saber si el hilo esta activo. 1=activo 0=termino
 };
+int users,on,clientesI[BACKLOG];  //users cantidad de usuarios conectados, on dice si el servidor se encuentra o no apagado, ClientesI dice cuales espacios de clientes estan ocupados (1) y cuales se pueden ocupar(0)
+struct hijos clientes[BACKLOG]; //son todos los clientes e hilos hijos que se puede tener
+pthread_mutex_t mutex; //El mutex para bloquear la seccion critica y sincrozar
+int pipefd[2];
 
-int *users;  // *writeFile,variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+sem_t *semaforo;
 
-int isFull();
-int crear();
-FILE* openFileR();
-FILE* openFileA();
-void fileEnd();
-void atenderCliente(); 
-void ingresar();
-void leer();
-void borrar();
-void buscar();
-void sendPerro();
-void recvPerro();
-int tamano();
-void minToMay();
-int numRegs();
-void writeLog();
-void *hiloCliente();
+char*  sincType;
 
-int main(){
-	pthread_mutex_t mutex;
-	pthread_cond_t vacio,lleno;
-	pthread_t hilos [BACKLOG];
-	int ocupado[BACKLOG];
-	int serverId,clienteId,r,status,shmId,userTmp;
-	struct sockaddr_in  client;
-	socklen_t tamano=0;
-	key_t key=1234,keyU=3232;
-	pid_t pid, end; // identificador de procesos
-	char buffer[32], *ipAddr; // prueba de 	funcionamiento
+
+int vacio(); //Dice cual es el primer espacio disponible para rellenaren los clientes y clientesI
+int desocupar(); //Dice cual es el primer espacio o hilo que ya acabo el cual se puede quitar de los arreglos
+int isFull(); //Dice si el servidor esta lleno 
+int crear(); //Crea el servidor
+void *crearClientes(); // es la funcion que va a crear los hilos de los clientes esta va a ser ejecutada por un hilo
+void *eliminarClientes(); // es la funcion que va a a esperar a los hilos de los clientes que ya se desconectaron esta va a ser ejecutada por un hilo
+FILE* openFileR(); //abre el archivo para lectura unicamente
+FILE* openFileA(); //abre el archivo para agregar cosas al final
+void fileEnd(); //Cierra el archivo
+void *atenderCliente(); //Esta funcion se encarga de dar respuesta a las peticiones de los clientes
+void ingresar(); //agrega una nueva mascota
+void leer();	//permite leer las mascotas inscritas
+void borrar();  //permite borrar un registro
+void buscar();   //busca en los registros que coincidan con el nombre buscado
+void sendPerro(); // envia hacia el cliente una estructura dogType
+void recvPerro(); // recibe del cliente una estructura dogType
+int tamano();  //Dice el tamaño de una palabra
+void minToMay(); // vuelve una palabra a mayuscula sostenida
+int numRegs(); //calcula el numero total de registros almacenados
+void writeLog();//escribbe el log donde se registran las operaciones realizadas por los usuarios
+
+int main(int argc, char* const argv[]){
+	sincType = argv[1];
+	printf("%s\n",sincType);
+	int serverId,r,i;
+	i=16;
+	if(strcmp( sincType, "pipe") == 0){
+	r=pipe(pipefd);
+		if (r != 0){
+			perror ("No puedo crear tuberia");
+			exit (-1);
+		}
+		write(pipefd[1],&i,sizeof(int));
+	}
+	if(strcmp( sincType, "mutex") == 0){
+
+	}
+	if(strcmp( sincType, "semaphore") == 0){
+		semaforo= sem_open("semaforo_name", O_CREAT, 0700, BACKLOG); 
+	}
+	
+	for(i=0;i<BACKLOG;i++)
+		clientesI[i]=0;
+	pthread_t alfa, omega;
 	serverId=crear();
-	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);	//Creacion del espacio en memoria compartida
-	if(shmId<0){
-		perror("Error en shmget");
-		exit(-1);
-	}
-	//writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
-	//*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
-	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
-	if(shmId<0){
-		perror("Error en shmget users");
-		exit(-1);
-	}
-	users = (int *)shmat(shmId,0,0);
-	*users = 0;
+	users = -1;
+	pthread_create(&alfa,NULL,crearClientes,&serverId);
+	pthread_create(&omega,NULL,eliminarClientes,NULL);
+	pthread_join(omega,NULL);
+	pthread_join(alfa,NULL);
 
-	for(int i = 0;i< BACKLOG;i++){
-		ocupado[i]=1;
+	if(strcmp( sincType, "semaphore") == 0){
+		sem_close(semaforo);
+	sem_unlink("semaforo_name");
 	}
+	exit(0);
+}
 
-	pid = fork();
+int vacio(){
+	int i=0;
+	while((clientesI[i])!=0 && i<BACKLOG){ //mientras la casilla este llena y no supere el tamaño del arreglo aumenta
+		i++;
+	}
+	printf("vacio number %i \n",i);
+	if(i==BACKLOG)
+		return -1;
+	return i;
+}
+int desocupar(){
+	int i=0;
+	while(clientesI[i] == 1 && clientes[i].ocupado == 1 && i<BACKLOG){ //aumenta si hay un hilo y ese hilo esta activo pero no excede el tamaño del arreglo
+		i++;
+	}
+	if(clientesI[i]==0 || i==BACKLOG) // puede que los anteriores esten llenos  pero este no esta lleno 
+		return -1;
+	return i;
+}
 
-	int hiloId;
+void *crearClientes(int *serverId){
+	printf("alfa\n");
+	int clienteId,num;
+	struct sockaddr_in  client;
+	struct hijos hilo;
+	socklen_t tamano=0;
 	while(isFull()){
-
+		clienteId=accept(*serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
 		{
 			perror("\n Error en accept: \n");
 			exit(-1);
 		}
-
-		if ( pid < 0 ){
-			perror("\n Error en fork: ");
-			exit(-1);
+		hilo.clientId=clienteId;
+		hilo.ipAddr = inet_ntoa(client.sin_addr);
+		hilo.ocupado=1;
+		num=vacio();
+		if(num>=0){
+			clientes[num]=hilo;
+			clientesI[num]=1;
+			if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
+			    	printf("Uh-oh!\n");
+			}else{
+				users=users+1;	
+				printf("cliente numero %i \n",users);	
+			}
 		}
-		if(pid==0){ //Somos hijos
-			printf("ENTRO\n");
-			clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
-			hiloId = hiloLibre(ocupado);
-			*users=*users+1;
-			userTmp=*users;
-			struct args_struct args;
-			args.clienteId = clienteId;
-		    args.ipAddr = inet_ntoa(client.sin_addr);
-	 	   	args.mutex = mutex;
-			printf("antes hilo\n");
-			ocupado[hiloId] = 0;
-			if (pthread_create(&hilos[hiloId], NULL, hiloCliente, &args) != 0) {
-		    	printf("Uh-oh!\n");
-		    	return -1;
-	    	}
-	    	//pthread_join(hilos[hiloId], NULL);
-	    	printf("HOLAXD\n");
-			r=close(clienteId);
-			ocupado[hiloId] = 1;
-		    if(r<0){
-		    	perror("Error al cerrar cliente");
-		    	exit(-1);
-		    }  
-		}else{	//soy el padre  
-			//clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);       
-	    }
-
-    	
-    }
-    r=close(serverId);
-	    if(r<0){
-	    	perror("Error al cerrar servidor");
-	    	exit(-1);
-		}
-    exit(0);
-	    
+	}
+	if(close(*serverId)==0)
+		on=0;
+	pthread_exit(0);
+}
+void *eliminarClientes(){
+	printf("omega");
+	int dead,i;
+	while( on == 1 || users>=0){
+		dead=desocupar();
+		if(dead>-1 && users>=0 && dead<BACKLOG){
+		printf("desocupados join  %i usuarios %i \n",dead,users);
+		pthread_join(clientes[dead].hilo,NULL);		
+		close(clientes[dead].clientId);
+		clientesI[dead]=0;
+		users=users-1;
+		printf("desocupados  %i usuarios %i \n",dead,users);
+		}		
+	}
+	pthread_exit(0);
 }
 
-
-
 int isFull(){    
-    if(*users<=BACKLOG){    		
+    if(users<BACKLOG){    		
           return 1;		//para parar el while
     }else{
           return 0; 	//para continuar el while
     }
-}
-
-
-
-int hiloLibre(int ocupado[]){
-	int libre = 0;
-	while(ocupado[libre]!= 1){
-		libre++;
-	}
-	return libre;
-}
-
-void *hiloCliente(void *arguments){
-	struct args_struct *args = arguments;
-	atenderCliente(args->clienteId,args->ipAddr,args->mutex);
 }
 
 int crear(){                     //crea el socket del servidor
@@ -188,44 +200,35 @@ int crear(){                     //crea el socket del servidor
 		perror("\nError en listen():\n");
 		exit(-1);
 	}
+	on=1;
 	return serverId;
 }
-
-void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //esta funcion atiende al cliente
+ //esta funcion atiende al cliente
+void *atenderCliente(void *cliente){    
+	struct hijos *hilo=cliente;
 	int vivo=0;
 	int r,opc=0;
-	printf("cliente, %i\n", clientId);
 	do{	
-		r= recv(clientId,&opc,sizeof(int),0);
+		r= recv(hilo->clientId,&opc,sizeof(int),0);
 		if(r<0){
 			perror("\n Error al recibir solicitud");
 			exit(-1);
 		}
 		switch(opc){
-			case 1 :
-				pthread_mutex_lock(&mutex);
-				ingresar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+			case 1 :ingresar(cliente);
 				break;
 
-			case 2 : 
-				pthread_mutex_lock(&mutex);
-				leer(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+			case 2 :leer(cliente);
 				break;
-			case 3 : 
-				pthread_mutex_lock(&mutex);
-				borrar(clientId,ipAddr);
-				pthread_mutex_unlock(&mutex);
+			case 3 :borrar(cliente);
 				break;
-			case 4 :
-				buscar(clientId,ipAddr,mutex);
+			case 4 :buscar(cliente);
 				break;
-			case 5 : *users = *users-1;
+			case 5 : hilo->ocupado=0;
 				break;
-			case 0 : *users = *users-1;
+			case 0 : hilo->ocupado=0;
 				perror("\nEl usuario se desconecto repentinamente");
-				exit(-1);
+				opc=5;
 				break;
 			default : perror ("\nOpcion invalida");
 				  opc=0;
@@ -233,32 +236,36 @@ void atenderCliente(int clientId, char *ipAddr,pthread_mutex_t mutex){     //est
 				  break;
 		}
 		if(vivo>20){
-			*users = *users-1;
 			perror("\nEl usuario se desconecto repentinamente");
-			exit(-1);
+			opc=5;
 		}
 	}while(opc!=5);
+	pthread_exit(0);
 }
 
-void ingresar(int clientId, char *ipAddr){
+void ingresar(void *cliente){    
+	struct hijos *hilo=cliente;
 	struct dogType *ingreso = NULL;
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
 	int r;
-	recvPerro(ingreso,clientId);
+	recvPerro(ingreso,hilo->clientId);
 	file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
 	int data = fwrite(ingreso,sizeof(struct dogType),1,file);		
 	if(data<=0){
 		perror("Error de escritura");
 	}
 	fileEnd(file);
-	writeLog(1,ingreso,ipAddr);
-	free(ingreso);
+	writeLog(1,ingreso,hilo->ipAddr);
+	free(ingreso);	
+	
 
 }
 
 
-void leer(int clientId, char *ipAddr){
+void leer(void *cliente){
+	printf("cliente leer numero %i \n",users);    
+	struct hijos *hilo=cliente;
 	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;
 	long tamano=sizeof(struct dogType);
@@ -266,13 +273,13 @@ void leer(int clientId, char *ipAddr){
 	FILE *file;
 	do{
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
 	int opcion = 0;
-	r = recv(clientId,&opcion,sizeof(int),0);
+	r = recv(hilo->clientId,&opcion,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
@@ -285,20 +292,21 @@ void leer(int clientId, char *ipAddr){
 	}else{
 		fileEnd(file);
 	}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(hilo->clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
 		}
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
-		sendPerro(lectura,clientId);
+		sendPerro(lectura,hilo->clientId);
 		fileEnd(file);
-		writeLog(2,lectura,ipAddr);
+		writeLog(2,lectura,hilo->ipAddr);
 	}
 	free(lectura);
 }
-void buscar(int clientId,char *ipAddr,pthread_mutex_t mutex){
+void buscar(void *cliente){    
+	struct hijos *hilo=cliente;
 	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
@@ -306,22 +314,21 @@ void buscar(int clientId,char *ipAddr,pthread_mutex_t mutex){
 	FILE *file;
 	busqueda = malloc(tamano);
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
-	r=recv(clientId,&tam,sizeof(int),0);
+	r=recv(hilo->clientId,&tam,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir tamano de la palabra");
 		exit(-1);
 	}
-	r=recv(clientId,opcion,tam,0);
+	r=recv(hilo->clientId,opcion,tam,0);
 	if(r<0){
 		perror("error al recibir la palabra");
 		exit(-1);
 	}
-	pthread_mutex_lock(&mutex);
 	file=openFileR();
 	fseek(file, 0, SEEK_END);
 	tamArchivo=ftell(file);
@@ -337,36 +344,35 @@ void buscar(int clientId,char *ipAddr,pthread_mutex_t mutex){
 		}else{
 			siguiente=0;
 		}
-		r=send(clientId,&siguiente,sizeof(int),0);
+		r=send(hilo->clientId,&siguiente,sizeof(int),0);
 		if(r<0){
 			perror("Error al enviar siguiente");
 			exit(-1);		
 		}
 		if(siguiente==1){
-		sendPerro(busqueda,clientId);
+		sendPerro(busqueda,hilo->clientId);
 		encontrados++;
 		}
 	
 	}
 	siguiente=-1;
-	r=send(clientId,&siguiente,sizeof(int),0);
+	r=send(hilo->clientId,&siguiente,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el ultimo siguiente");
 		exit(-1);
 	}
-	r=send(clientId,&encontrados,sizeof(int),0);
+	r=send(hilo->clientId,&encontrados,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el total de encontrados");
 		exit(-1);
 	}
 	fileEnd(file);
-	writeLog(4,opcion,ipAddr);
+	writeLog(4,opcion,hilo->ipAddr);
 	free(busqueda);
-	pthread_mutex_unlock(&mutex);
 }
 
-void borrar(int clientId,char *ipAddr){
-	
+void borrar(void *cliente){    
+	struct hijos *hilo=cliente;	
 	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
@@ -375,12 +381,12 @@ void borrar(int clientId,char *ipAddr){
 	do{	
 		numeroRegistros = numRegs();
 		borrado = malloc(tamano);
-		r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
+		r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
 		if(r<0){
 			perror("Error para enviar el numero de registros");
 			exit(-1);
 		}
-		r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
+		r = recv(hilo->clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
 		if(r<0){
 			perror("Error para recibir la opcion");
 			exit(-1);
@@ -391,7 +397,7 @@ void borrar(int clientId,char *ipAddr){
 		}else{
 			fileEnd(file);
 		}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(hilo->clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
@@ -399,7 +405,7 @@ void borrar(int clientId,char *ipAddr){
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
 		fread(borrado,sizeof(struct dogType),1,file);	
-		sendPerro(borrado,clientId);//envia el perro que se borrara
+		sendPerro(borrado,hilo->clientId);//envia el perro que se borrara
 		rewind(file);	
 		newfile = fopen("temp.dat","w+");
 		while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
@@ -413,7 +419,21 @@ void borrar(int clientId,char *ipAddr){
 
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
-		writeLog(3,borrado,ipAddr);
+
+		if(strcmp( sincType, "mutex") == 0){
+			pthread_mutex_unlock(&mutex);
+		}
+	
+		if(strcmp( sincType, "semaphore") == 0){
+			sem_post(semaforo);
+		}
+		
+		int i=16;
+		if(strcmp( sincType, "pipe") == 0){
+			write(pipefd[1],&i,sizeof(int));
+		}	
+		
+		writeLog(3,borrado,hilo->ipAddr);
 	}
 	free(borrado);
 
@@ -422,6 +442,21 @@ void borrar(int clientId,char *ipAddr){
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	FILE *file;
+	int i;	
+
+
+	if(strcmp( sincType, "mutex") == 0){
+		pthread_mutex_lock(&mutex);
+	}
+	
+	if(strcmp( sincType, "semaphore") == 0){
+		sem_wait(semaforo);
+	}
+
+	if(strcmp( sincType, "pipe") == 0){
+		read(pipefd[1],&i,sizeof(int));
+	}	
+
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
@@ -433,9 +468,24 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 
 FILE* openFileR(){  //metodo para abrir los archivos read
 	FILE *file;
+	int i;	
+
+	if(strcmp( sincType, "mutex") == 0){
+		pthread_mutex_lock(&mutex);
+	}
+	
+	if(strcmp( sincType, "semaphore") == 0){
+		sem_wait(semaforo);
+	}
+
+	if(strcmp( sincType, "pipe") == 0){
+		read(pipefd[1],&i,sizeof(int));
+	}	
+
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
+		exit(-1);
 	}else{
 		return file;
 	}
@@ -446,6 +496,20 @@ void fileEnd(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
+	int i=16;
+
+	if(strcmp( sincType, "mutex") == 0){
+		pthread_mutex_unlock(&mutex);
+	}
+	
+	if(strcmp( sincType, "semaphore") == 0){
+		sem_post(semaforo);
+	}
+
+	if(strcmp( sincType, "pipe") == 0){
+		write(pipefd[1],&i,sizeof(int));
+	}	
+
 }
 
 void recvPerro(void *ap, int clientId){

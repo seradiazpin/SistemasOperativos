@@ -11,7 +11,7 @@
 # include <string.h>
 # include <time.h>
 # include <unistd.h>
-
+# include <pthread.h>
 
 #define PORT 9510
 #define BACKLOG 32
@@ -26,14 +26,24 @@ struct dogType
    char  sexo;
 };
 
-int *writeFile,*users;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+struct hijos{
+	pthread_t hilo;
+	char *ipAddr;
+	int ocupado,clientId; // es para saber si el hilo esta activo. 1=activo 0=termino
+};
+int *users,on;  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
+struct hijos clientes[BACKLOG];
+pthread_mutex_t mutex;
 
+int vacio();
+int desocupar();
 int isFull();
 int crear();
+void *crearClientes();
 FILE* openFileR();
 FILE* openFileA();
 void fileEnd();
-void atenderCliente(); 
+void *atenderCliente(); 
 void ingresar();
 void leer();
 void borrar();
@@ -46,20 +56,10 @@ int numRegs();
 void writeLog();
 
 int main(){
-	int serverId,clienteId,r,status,shmId,userTmp;
-	struct sockaddr_in  client;
-	socklen_t tamano=0;
-	key_t key=1234,keyU=3232;
+	int serverId,r,status,shmId,userTmp;
+	key_t keyU=3232;
 	pid_t pid, end; // identificador de procesos
-	char buffer[32], *ipAddr; // prueba de 	funcionamiento
-	serverId=crear();
-	shmId=shmget(key,sizeof(int),0666|IPC_CREAT);	//Creacion del espacio en memoria compartida
-	if(shmId<0){
-		perror("Error en shmget");
-		exit(-1);
-	}
-	writeFile=(int *)shmat(shmId,0,0);  //Asosiacion del espacio de memoria compartida
-	*writeFile=0; // estara en 0 si nadie esta escribiendo de lo contrario estara en 1
+	serverId=crear();	
 	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
 	if(shmId<0){
 		perror("Error en shmget users");
@@ -67,24 +67,8 @@ int main(){
 	}
 	users = (int *)shmat(shmId,0,0);
 	*users = 0;
-	while(isFull()){
-		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
-		if(clienteId<0)
-		{
-			perror("\n Error en accept: \n");
-			exit(-1);
-		}
-		pid =fork();
-		if ( pid < 0 ){
-			perror("\n Error en fork: ");
-			exit(-1);
-		}
-		if(pid==0){ //Somos hijos
-			ipAddr=inet_ntoa(client.sin_addr);
-	      		atenderCliente(clienteId,ipAddr);  //atender usuario
-			close(clienteId);
-	        	close(serverId);
-	        	exit(0);
+		if(pid==0){ //Somos hijo
+			
 		}else{	//soy el padre
 			if(*users<userTmp){		// si el numero de usuarios es menor al que estaba anteriormente espera hasta que esos hijos mueran para continuar
 			    int dead=0;
@@ -128,6 +112,65 @@ int main(){
 	    }
 	    
 }
+int vacio(){
+	int i=0;
+	while(&clientes[i]!=NULL){
+		i++;
+	}
+	return i;
+}
+int desocupar(){
+	int i=0;
+	if(&clientes[i]!=NULL)
+		return -1;
+	while(&clientes[i]!=NULL && clientes[i].ocupado!=1 && i<BACKLOG){
+		i++;
+	}
+	return i;
+}
+
+void *crearClientes(int serverId){
+	int clienteId,num;
+	struct sockaddr_in  client;
+	struct hijos hilo;
+	socklen_t tamano=0;
+	while(isFull()){
+		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
+		if(clienteId<0)
+		{
+			perror("\n Error en accept: \n");
+			exit(-1);
+		}
+		hilo.clientId=clienteId;
+		hilo.ipAddr = inet_ntoa(client.sin_addr);
+		num=vacio();
+		clientes[num]=hilo;
+		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
+		    	printf("Uh-oh!\n");
+		}
+	}
+	close(clienteId);
+	if(close(serverId)==0){
+		on=0;
+	}
+	exit(0);
+}
+void *eliminarClientes(){
+	int dead,i;
+	while(on){
+		dead=desocupar();
+		if(dead>0){
+		pthread_join(clientes[dead].hilo,NULL);
+		i=dead;
+		while(&clientes[i+1]!=NULL && i<31){
+		clientes[i]=clientes[i+1];
+		i++;
+		}
+		}
+
+		
+	}
+}
 
 int isFull(){    
     if(*users<=BACKLOG){    		
@@ -160,31 +203,30 @@ int crear(){                     //crea el socket del servidor
 		perror("\nError en listen():\n");
 		exit(-1);
 	}
+	on=1;
 	return serverId;
 }
-
-void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al cliente
+ //esta funcion atiende al cliente
+void *atenderCliente(void *cliente){    
+	struct hijos *hilo=cliente;
 	int vivo=0;
 	int r,opc=0;
 	do{	
-		r= recv(clientId,&opc,sizeof(int),0);
+		r= recv(hilo->clientId,&opc,sizeof(int),0);
 		if(r<0){
 			perror("\n Error al recibir solicitud");
 			exit(-1);
 		}
 		switch(opc){
-			case 1 :
-				ingresar(clientId,ipAddr);
+			case 1 :ingresar(cliente);
 				break;
 
 			case 2 : 
-				leer(clientId,ipAddr);
+				leer(cliente);
 				break;
-			case 3 : 
-				borrar(clientId,ipAddr);
+			case 3 :borrar(cliente);
 				break;
-			case 4 :
-				buscar(clientId,ipAddr);
+			case 4 :buscar(cliente);
 				break;
 			case 5 : *users = *users-1;
 				break;
@@ -205,12 +247,13 @@ void atenderCliente(int clientId, char *ipAddr){     //esta funcion atiende al c
 	}while(opc!=5);
 }
 
-void ingresar(int clientId, char *ipAddr){
+void ingresar(void *cliente){    
+	struct hijos *hilo=cliente;
 	struct dogType *ingreso = NULL;
 	ingreso= malloc(sizeof(struct dogType));
 	FILE *file;
 	int r;
-	recvPerro(ingreso,clientId);
+	recvPerro(ingreso,hilo->clientId);
 	do{
 	if(*writeFile==0){
 		file=openFileA("dataDogs.dat");        //Abrir el archivo para escribir
@@ -219,7 +262,7 @@ void ingresar(int clientId, char *ipAddr){
 			perror("Error de escritura");
 		}
 		fileEnd(file);
-		writeLog(1,ingreso,ipAddr);
+		writeLog(1,ingreso,hilo->ipAddr);
 		free(ingreso);
 	}
 	}while(*writeFile==1);
@@ -227,7 +270,8 @@ void ingresar(int clientId, char *ipAddr){
 }
 
 
-void leer(int clientId, char *ipAddr){
+void leer(void *cliente){    
+	struct hijos *hilo=cliente;
 	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;
 	long tamano=sizeof(struct dogType);
@@ -235,13 +279,13 @@ void leer(int clientId, char *ipAddr){
 	FILE *file;
 	do{
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
 	int opcion = 0;
-	r = recv(clientId,&opcion,sizeof(int),0);
+	r = recv(hilo->clientId,&opcion,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir el numero  del registro");
 		exit(-1);
@@ -255,20 +299,21 @@ void leer(int clientId, char *ipAddr){
 	}else{
 		fileEnd(file);
 	}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(hilo->clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
 		}
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
-		sendPerro(lectura,clientId);
+		sendPerro(lectura,hilo->clientId);
 		fileEnd(file);
-		writeLog(2,lectura,ipAddr);
+		writeLog(2,lectura,hilo->ipAddr);
 	}
 	free(lectura);
 }
-void buscar(int clientId,char *ipAddr){
+void buscar(void *cliente){    
+	struct hijos *hilo=cliente;
 	int numeroRegistros = 0, numRegistro, encontrados=0,r,tam,siguiente=0;//siguiente -1 si termino 0 si debe continuar esperando 1 si encontro algo;
 	struct dogType *busqueda;
 	long tamano=sizeof(struct dogType),tamArchivo;
@@ -276,17 +321,17 @@ void buscar(int clientId,char *ipAddr){
 	FILE *file;
 	busqueda = malloc(tamano);
 	numeroRegistros = numRegs();
-	r = send(clientId,&numeroRegistros, sizeof(int), 0);
+	r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0);
 	if(r<0){
 		perror("error al mandar la cantidad de registros");
 		exit(-1);
 	}
-	r=recv(clientId,&tam,sizeof(int),0);
+	r=recv(hilo->clientId,&tam,sizeof(int),0);
 	if(r<0){
 		perror("error al recibir tamano de la palabra");
 		exit(-1);
 	}
-	r=recv(clientId,opcion,tam,0);
+	r=recv(hilo->clientId,opcion,tam,0);
 	if(r<0){
 		perror("error al recibir la palabra");
 		exit(-1);
@@ -307,35 +352,35 @@ void buscar(int clientId,char *ipAddr){
 		}else{
 			siguiente=0;
 		}
-		r=send(clientId,&siguiente,sizeof(int),0);
+		r=send(hilo->clientId,&siguiente,sizeof(int),0);
 		if(r<0){
 			perror("Error al enviar siguiente");
 			exit(-1);		
 		}
 		if(siguiente==1){
-		sendPerro(busqueda,clientId);
+		sendPerro(busqueda,hilo->clientId);
 		encontrados++;
 		}
 	
 	}
 	siguiente=-1;
-	r=send(clientId,&siguiente,sizeof(int),0);
+	r=send(hilo->clientId,&siguiente,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el ultimo siguiente");
 		exit(-1);
 	}
-	r=send(clientId,&encontrados,sizeof(int),0);
+	r=send(hilo->clientId,&encontrados,sizeof(int),0);
 	if(r<0){
 		perror("Error al enviar el total de encontrados");
 		exit(-1);
 	}
 	fileEnd(file);
-	writeLog(4,opcion,ipAddr);
+	writeLog(4,opcion,hilo->ipAddr);
 	free(busqueda);
 }
 
-void borrar(int clientId,char *ipAddr){
-	
+void borrar(void *cliente){    
+	struct hijos *hilo=cliente;	
 	int found = 0,r,opcion=0;
 	int numeroRegistros = 0;
 	long tamano=sizeof(struct dogType);
@@ -344,12 +389,12 @@ void borrar(int clientId,char *ipAddr){
 	do{	
 		numeroRegistros = numRegs();
 		borrado = malloc(tamano);
-		r = send(clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
+		r = send(hilo->clientId,&numeroRegistros, sizeof(int), 0); //encia el numero de registros actuales.
 		if(r<0){
 			perror("Error para enviar el numero de registros");
 			exit(-1);
 		}
-		r = recv(clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
+		r = recv(hilo->clientId,&opcion,sizeof(int),0); //Recibe el numero del registro que se desea eliminar
 		if(r<0){
 			perror("Error para recibir la opcion");
 			exit(-1);
@@ -361,7 +406,7 @@ void borrar(int clientId,char *ipAddr){
 		}else{
 			fileEnd(file);
 		}
-		r = send(clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
+		r = send(hilo->clientId,&found, sizeof(int), 0); //confirma la existencia del registro aun
 		if(r<0){
 			perror("Error al confirmar la existencia");
 			exit(-1);
@@ -369,7 +414,7 @@ void borrar(int clientId,char *ipAddr){
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
 		fread(borrado,sizeof(struct dogType),1,file);	
-		sendPerro(borrado,clientId);//envia el perro que se borrara
+		sendPerro(borrado,hilo->clientId);//envia el perro que se borrara
 		rewind(file);	
 		newfile = fopen("temp.dat","w+");
 		while (fread(borrado,sizeof(struct dogType),1,file) != 0) {
@@ -383,7 +428,7 @@ void borrar(int clientId,char *ipAddr){
 
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
-		writeLog(3,borrado,ipAddr);
+		writeLog(3,borrado,hilo->ipAddr);
 	}
 	free(borrado);
 	*writeFile=0;

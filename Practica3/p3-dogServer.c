@@ -14,7 +14,7 @@
 # include <pthread.h>
 
 #define PORT 9510
-#define BACKLOG 32
+#define BACKLOG 5
 
 struct dogType
 {
@@ -27,34 +27,34 @@ struct dogType
 };
 
 struct hijos{
-	pthread_t hilo;
+	pthread_t hilo;        //el hilo
 	char *ipAddr;
 	int ocupado,clientId; // es para saber si el hilo esta activo. 1=activo 0=termino
 };
-int *users,on,clientesI[BACKLOG];  //variable en memoria compartida si esta en 1 es porque estan escribiendo el archivo si esta en 0 esta libre
-struct hijos clientes[BACKLOG];
-pthread_mutex_t mutex;
+int users,on,clientesI[BACKLOG];  //users cantidad de usuarios conectados, on dice si el servidor se encuentra o no apagado, ClientesI dice cuales espacios de clientes estan ocupados (1) y cuales se pueden ocupar(0)
+struct hijos clientes[BACKLOG]; //son todos los clientes e hilos hijos que se puede tener
+pthread_mutex_t mutex; //El mutex para bloquear la seccion critica y sincrozar
 
-int vacio();
-int desocupar();
-int isFull();
-int crear();
-void *crearClientes();
-void *eliminarClientes();
-FILE* openFileR();
-FILE* openFileA();
-void fileEnd();
-void *atenderCliente(); 
-void ingresar();
-void leer();
-void borrar();
-void buscar();
-void sendPerro();
-void recvPerro();
-int tamano();
-void minToMay();
-int numRegs();
-void writeLog();
+int vacio(); //Dice cual es el primer espacio disponible para rellenaren los clientes y clientesI
+int desocupar(); //Dice cual es el primer espacio o hilo que ya acabo el cual se puede quitar de los arreglos
+int isFull(); //Dice si el servidor esta lleno 
+int crear(); //Crea el servidor
+void *crearClientes(); // es la funcion que va a crear los hilos de los clientes esta va a ser ejecutada por un hilo
+void *eliminarClientes(); // es la funcion que va a a esperar a los hilos de los clientes que ya se desconectaron esta va a ser ejecutada por un hilo
+FILE* openFileR(); //abre el archivo para lectura unicamente
+FILE* openFileA(); //abre el archivo para agregar cosas al final
+void fileEnd(); //Cierra el archivo
+void *atenderCliente(); //Esta funcion se encarga de dar respuesta a las peticiones de los clientes
+void ingresar(); //agrega una nueva mascota
+void leer();	//permite leer las mascotas inscritas
+void borrar();  //permite borrar un registro
+void buscar();   //busca en los registros que coincidan con el nombre buscado
+void sendPerro(); // envia hacia el cliente una estructura dogType
+void recvPerro(); // recibe del cliente una estructura dogType
+int tamano();  //Dice el tamaño de una palabra
+void minToMay(); // vuelve una palabra a mayuscula sostenida
+int numRegs(); //calcula el numero total de registros almacenados
+void writeLog();//escribbe el log donde se registran las operaciones realizadas por los usuarios
 
 int main(){
 	int serverId,r,status,shmId,userTmp;
@@ -64,14 +64,8 @@ int main(){
 	for(i=0;i<BACKLOG;i++)
 		clientesI[i]=0;
 	pthread_t alfa, omega;
-	serverId=crear();	
-	shmId=shmget(keyU,sizeof(int),0666|IPC_CREAT);//Espacio de memoria para el numero de usuarios
-	if(shmId<0){
-		perror("Error en shmget users");
-		exit(-1);
-	}
-	users = (int *)shmat(shmId,0,0);
-	*users = 0;
+	serverId=crear();
+	users = -1;
 	pthread_create(&alfa,NULL,crearClientes,&serverId);
 	pthread_create(&omega,NULL,eliminarClientes,NULL);
 	pthread_join(omega,NULL);
@@ -80,7 +74,7 @@ int main(){
 }
 int vacio(){
 	int i=0;
-	while((clientesI[i])!=0 && i<BACKLOG){
+	while((clientesI[i])!=0 && i<BACKLOG-1){ //mientras la casilla este llena y no supere el tamaño del arreglo aumenta
 		i++;
 	}
 	printf("vacio number %i \n",i);
@@ -88,12 +82,11 @@ int vacio(){
 }
 int desocupar(){
 	int i=0;
-	if(clientesI[i]==0)
-		return -1;
-	while(clientesI[i]!=0 && clientes[i].ocupado!=1 && i<BACKLOG){
+	while(clientesI[i] == 1 && clientes[i].ocupado == 1 && i<BACKLOG){ //aumenta si hay un hilo y ese hilo esta activo pero no excede el tamaño del arreglo
 		i++;
 	}
-	printf("desocupado %i \n",i);
+	if(clientesI[i]==0) // puede que los anteriores esten llenos  pero este no esta lleno 
+		return -1;
 	return i;
 }
 
@@ -114,39 +107,38 @@ void *crearClientes(int *serverId){
 		hilo.ipAddr = inet_ntoa(client.sin_addr);
 		hilo.ocupado=1;
 		num=vacio();
-		clientesI[num]=1;
 		clientes[num]=hilo;
-		printf("cliente numero %i \n",*users);
+		clientesI[num]=1;
 		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
 		    	printf("Uh-oh!\n");
 		}else{
-			puts("true");
-			*users=*users+1;		
+			users=users+1;	
+			printf("cliente numero %i \n",users);	
 		}
 	}
-	close(clienteId);
-	if(close(*serverId)==0){
+	if(close(*serverId)==0)
 		on=0;
-	}
 	pthread_exit(0);
 }
 void *eliminarClientes(){
 	printf("omega");
 	int dead,i;
-	while(on){
+	while( on == 1 || users>=0){
 		dead=desocupar();
-		if(dead>-1 && *users>0 && dead<BACKLOG){
-		pthread_join(clientes[dead].hilo,NULL);
-		puts("Elimino");
+		if(dead>-1 && users>=0 && dead<BACKLOG){
+		printf("desocupados join  %i usuarios %i \n",dead,users);
+		pthread_join(clientes[dead].hilo,NULL);		
+		close(clientes[dead].clientId);
 		clientesI[dead]=0;
-		*users=*users-1;
+		users=users-1;
+		printf("desocupados  %i usuarios %i \n",dead,users);
 		}		
 	}
 	pthread_exit(0);
 }
 
 int isFull(){    
-    if(*users<=BACKLOG){    		
+    if(users<BACKLOG){    		
           return 1;		//para parar el while
     }else{
           return 0; 	//para continuar el while
@@ -239,7 +231,8 @@ void ingresar(void *cliente){
 }
 
 
-void leer(void *cliente){    
+void leer(void *cliente){
+	printf("cliente leer numero %i \n",users);    
 	struct hijos *hilo=cliente;
 	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;

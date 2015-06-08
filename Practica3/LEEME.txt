@@ -1,4 +1,4 @@
- practica #2 Sistemas Operativos Grupo #2 
+ practica #3 Sistemas Operativos Grupo #2 
 
 Autores: Sergio Alejandro Diaz Pinilla ......seradiazpin@unal.edu.co 
 	 Osmar Alejandro Castillo Lancheros ......oacastillol@unal.edu.co
@@ -11,9 +11,9 @@ Solo desde S.O. basados en UNIX
 
 2. para su ejecucion debe usar: 
 	para el servidor
-		./p2-dogServer	
+		./p3-dogServer	<tipo de sincronizacion> (pipe; mutex; semaphore)
 	para el cliente
-		./p2-dogClient <ip del servidor>    (por ejemplo si se va a ejecutar localmente debe usar ./p2-dogClient 127.0.0.1)
+		./p3-dogClient <ip del servidor>    (por ejemplo si se va a ejecutar localmente debe usar ./p2-dogClient 127.0.0.1)
 
 3. Importante en el archivo dataDogs.dat se almacena la informacion necesaria para el funcionamiento correcto del programa, 
 por favor no eliminar ni modificar con aplicaciones externas a la indicada. Ademas el archivo serverDogs.log registra las operaciones 
@@ -31,5 +31,5 @@ no tenga errores.
 - Los rangos se manejan en una escala de 0 a x-1
 
 -------------------------------------------------------------------
-Mas informacion https://github.com/seradiazpin/SistemasOperativos/tree/nueva/Practica2
+Mas informacion https://github.com/seradiazpin/SistemasOperativos.git
 	

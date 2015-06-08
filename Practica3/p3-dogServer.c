@@ -69,20 +69,24 @@ int main(int argc, char* const argv[]){
 	int serverId,r,i;
 	i=16;
 	if(strcmp( sincType, "pipe") == 0){
-	r=pipe(pipefd);
+		r=pipe(pipefd);
 		if (r != 0){
 			perror ("No puedo crear tuberia");
 			exit (-1);
 		}
 		write(pipefd[1],&i,sizeof(int));
-	}
-	if(strcmp( sincType, "mutex") == 0){
+	}else{
+		if(strcmp( sincType, "mutex") == 0){
 
+		}else{
+			if(strcmp( sincType, "semaphore") == 0){
+				semaforo= sem_open("semaforo_name", O_CREAT, 0700, BACKLOG); 
+			}else{
+				perror("Digite el metodo de sincronizacion pipe, mutex, semaphore. Ex ./p3-dogServer pipe");
+				exit(0);
+				}
+		}
 	}
-	if(strcmp( sincType, "semaphore") == 0){
-		semaforo= sem_open("semaforo_name", O_CREAT, 0700, BACKLOG); 
-	}
-	
 	for(i=0;i<BACKLOG;i++)
 		clientesI[i]=0;
 	pthread_t alfa, omega;

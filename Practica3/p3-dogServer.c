@@ -83,16 +83,17 @@ int vacio(){
 	while((clientesI[i])!=0 && i<BACKLOG){
 		i++;
 	}
-	printf("number %i \n",i);
+	printf("vacio number %i \n",i);
 	return i;
 }
 int desocupar(){
 	int i=0;
-	if(clientesI[i]!=0)
+	if(clientesI[i]==0)
 		return -1;
 	while(clientesI[i]!=0 && clientes[i].ocupado!=1 && i<BACKLOG){
 		i++;
 	}
+	printf("desocupado %i \n",i);
 	return i;
 }
 
@@ -134,16 +135,10 @@ void *eliminarClientes(){
 	int dead,i;
 	while(on){
 		dead=desocupar();
-		if(dead>0){
+		if(dead>-1 && *users>0 && dead<BACKLOG){
 		pthread_join(clientes[dead].hilo,NULL);
 		puts("Elimino");
-		i=dead;
-		while(&clientesI[i+1]!=0 && i<BACKLOG-1){
-			clientes[i]=clientes[i+1];
-			clientesI[i]=clientesI[i+1];
-				i++;
-			}
-		free(&clientes[i+1]);
+		clientesI[dead]=0;
 		*users=*users-1;
 		}		
 	}

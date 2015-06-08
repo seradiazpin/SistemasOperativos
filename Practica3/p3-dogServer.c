@@ -33,7 +33,9 @@ struct hijos{
 };
 int users,on,clientesI[BACKLOG];  //users cantidad de usuarios conectados, on dice si el servidor se encuentra o no apagado, ClientesI dice cuales espacios de clientes estan ocupados (1) y cuales se pueden ocupar(0)
 struct hijos clientes[BACKLOG]; //son todos los clientes e hilos hijos que se puede tener
-pthread_mutex_t mutex; //El mutex para bloquear la seccion critica y sincrozar
+//pthread_mutex_t mutex; //El mutex para bloquear la seccion critica y sincrozar
+int pipefd[2];
+
 
 int vacio(); //Dice cual es el primer espacio disponible para rellenaren los clientes y clientesI
 int desocupar(); //Dice cual es el primer espacio o hilo que ya acabo el cual se puede quitar de los arreglos
@@ -57,10 +59,14 @@ int numRegs(); //calcula el numero total de registros almacenados
 void writeLog();//escribbe el log donde se registran las operaciones realizadas por los usuarios
 
 int main(){
-	int serverId,r,status,shmId,userTmp;
-	key_t keyU=3232;
-//	pid_t pid, end; // identificador de procesos
-	int i;
+	int serverId,r,i;
+	i=16;
+	r=pipe(pipefd);
+	if (r != 0){
+		perror ("No puedo crear tuberia");
+		exit (-1);
+	}
+	write(pipefd[1],&i,sizeof(int));
 	for(i=0;i<BACKLOG;i++)
 		clientesI[i]=0;
 	pthread_t alfa, omega;
@@ -74,10 +80,12 @@ int main(){
 }
 int vacio(){
 	int i=0;
-	while((clientesI[i])!=0 && i<BACKLOG-1){ //mientras la casilla este llena y no supere el tamaño del arreglo aumenta
+	while((clientesI[i])!=0 && i<BACKLOG){ //mientras la casilla este llena y no supere el tamaño del arreglo aumenta
 		i++;
 	}
 	printf("vacio number %i \n",i);
+	if(i==BACKLOG)
+		return -1;
 	return i;
 }
 int desocupar(){
@@ -85,7 +93,7 @@ int desocupar(){
 	while(clientesI[i] == 1 && clientes[i].ocupado == 1 && i<BACKLOG){ //aumenta si hay un hilo y ese hilo esta activo pero no excede el tamaño del arreglo
 		i++;
 	}
-	if(clientesI[i]==0) // puede que los anteriores esten llenos  pero este no esta lleno 
+	if(clientesI[i]==0 || i==BACKLOG) // puede que los anteriores esten llenos  pero este no esta lleno 
 		return -1;
 	return i;
 }
@@ -107,13 +115,15 @@ void *crearClientes(int *serverId){
 		hilo.ipAddr = inet_ntoa(client.sin_addr);
 		hilo.ocupado=1;
 		num=vacio();
-		clientes[num]=hilo;
-		clientesI[num]=1;
-		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
-		    	printf("Uh-oh!\n");
-		}else{
-			users=users+1;	
-			printf("cliente numero %i \n",users);	
+		if(num>=0){
+			clientes[num]=hilo;
+			clientesI[num]=1;
+			if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
+			    	printf("Uh-oh!\n");
+			}else{
+				users=users+1;	
+				printf("cliente numero %i \n",users);	
+			}
 		}
 	}
 	if(close(*serverId)==0)
@@ -387,7 +397,9 @@ void borrar(void *cliente){
 
 		remove("dataDogs.dat");
 		rename("temp.dat", "dataDogs.dat");
-		pthread_mutex_unlock(&mutex);
+//		pthread_mutex_unlock(&mutex);
+		int i=16;	
+		write(pipefd[1],&i,sizeof(int));
 		writeLog(3,borrado,hilo->ipAddr);
 	}
 	free(borrado);
@@ -397,7 +409,9 @@ void borrar(void *cliente){
 
 FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 	FILE *file;
-	pthread_mutex_lock(&mutex);
+	int i;	
+	read(pipefd[1],&i,sizeof(int));
+//	pthread_mutex_lock(&mutex);
 	file= fopen(nombre,"a+");
 	if(file==NULL){
 		perror ("\nError al abrir el archivo para escritura");
@@ -409,7 +423,9 @@ FILE* openFileA(char *nombre){  //metodo para abrir los archivos append
 
 FILE* openFileR(){  //metodo para abrir los archivos read
 	FILE *file;
-	pthread_mutex_lock(&mutex);
+	int i;	
+	read(pipefd[1],&i,sizeof(int));
+//	pthread_mutex_lock(&mutex);
 	file = fopen("dataDogs.dat","r"); 
 	if(file==NULL){
 		perror("Archivo con los datos no existe, primero haga insertar");
@@ -424,7 +440,9 @@ void fileEnd(FILE  *file){   //metodo para cerrar los archivos
 		perror("\nError al cerrar el archivo");
 		exit(-1);
 	}
-	pthread_mutex_unlock(&mutex);
+	int i=16;	
+	write(pipefd[1],&i,sizeof(int));
+//	pthread_mutex_unlock(&mutex);
 }
 
 void recvPerro(void *ap, int clientId){

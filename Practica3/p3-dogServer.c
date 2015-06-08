@@ -80,6 +80,7 @@ int vacio(){
 	while(&clientes[i]!=NULL){
 		i++;
 	}
+	printf("%i",i);
 	return i;
 }
 int desocupar(){
@@ -92,13 +93,14 @@ int desocupar(){
 	return i;
 }
 
-void *crearClientes(int serverId){
+void *crearClientes(int *serverId){
+	printf("alfa\n");
 	int clienteId,num;
 	struct sockaddr_in  client;
 	struct hijos hilo;
 	socklen_t tamano=0;
 	while(isFull()){
-		clienteId=accept(serverId,(struct sockaddr *)&client,&tamano);
+		clienteId=accept(*serverId,(struct sockaddr *)&client,&tamano);
 		if(clienteId<0)
 		{
 			perror("\n Error en accept: \n");
@@ -106,26 +108,31 @@ void *crearClientes(int serverId){
 		}
 		hilo.clientId=clienteId;
 		hilo.ipAddr = inet_ntoa(client.sin_addr);
+		hilo.ocupado=1;
 		num=vacio();
 		clientes[num]=hilo;
+		printf("cliente numero %i",num);
 		if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
 		    	printf("Uh-oh!\n");
 		}else{
+			puts("true");
 			*users=*users+1;		
 		}
 	}
 	close(clienteId);
-	if(close(serverId)==0){
+	if(close(*serverId)==0){
 		on=0;
 	}
 	pthread_exit(0);
 }
 void *eliminarClientes(){
+	printf("omega");
 	int dead,i;
 	while(on){
 		dead=desocupar();
 		if(dead>0){
 		pthread_join(clientes[dead].hilo,NULL);
+		puts("Elimino");
 		i=dead;
 		while(&clientes[i+1]!=NULL && i<BACKLOG-1){
 			clientes[i]=clientes[i+1];
@@ -175,7 +182,6 @@ int crear(){                     //crea el socket del servidor
  //esta funcion atiende al cliente
 void *atenderCliente(void *cliente){    
 	struct hijos *hilo=cliente;
-	hilo->ocupado=1;
 	int vivo=0;
 	int r,opc=0;
 	do{	

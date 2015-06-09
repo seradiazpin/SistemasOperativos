@@ -17,7 +17,7 @@
 #include <sys/stat.h> 
 
 #define PORT 9510
-#define BACKLOG 5
+#define BACKLOG 32
 
 struct dogType
 {
@@ -71,7 +71,6 @@ int main(int argc, char* const argv[]){
   		exit(-1);
 	  }
 	sincType = argv[1];
-	printf("%s\n",sincType);
 	int serverId,r,i;
 	i=16;
 	if(strcmp( sincType, "pipe") == 0){
@@ -112,7 +111,6 @@ int vacio(){
 	while((clientesI[i])!=0 && i<BACKLOG){ //mientras la casilla este llena y no supere el tamaño del arreglo aumenta
 		i++;
 	}
-	printf("vacio number %i \n",i);
 	if(i==BACKLOG)
 		return -1;
 	return i;
@@ -128,7 +126,6 @@ int desocupar(){
 }
 
 void *crearClientes(int *serverId){
-	printf("alfa\n");
 	int clienteId,num;
 	struct sockaddr_in  client;
 	struct hijos hilo;
@@ -148,10 +145,10 @@ void *crearClientes(int *serverId){
 			clientes[num]=hilo;
 			clientesI[num]=1;
 			if (pthread_create(&clientes[num].hilo, NULL, atenderCliente, &clientes[num]) != 0) {
-			    	printf("Uh-oh!\n");
+			    	perror("Uh-oh!\n");
+				exit(-1);
 			}else{
 				users=users+1;	
-				printf("cliente numero %i \n",users);	
 			}
 		}
 	}
@@ -160,17 +157,14 @@ void *crearClientes(int *serverId){
 	pthread_exit(0);
 }
 void *eliminarClientes(){
-	printf("omega");
 	int dead,i;
 	while( on == 1 || users>=0){
 		dead=desocupar();
 		if(dead>-1 && users>=0 && dead<BACKLOG){
-		printf("desocupados join  %i usuarios %i \n",dead,users);
 		pthread_join(clientes[dead].hilo,NULL);		
 		close(clientes[dead].clientId);
 		clientesI[dead]=0;
 		users=users-1;
-		printf("desocupados  %i usuarios %i \n",dead,users);
 		}		
 	}
 	pthread_exit(0);
@@ -271,7 +265,6 @@ void ingresar(void *cliente){
 
 
 void leer(void *cliente){
-	printf("cliente leer numero %i \n",users);    
 	struct hijos *hilo=cliente;
 	int numeroRegistros = 0,r,found=0;
 	struct dogType *lectura = NULL;

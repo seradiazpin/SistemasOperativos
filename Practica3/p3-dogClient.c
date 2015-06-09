@@ -219,7 +219,7 @@ void borrar(int clientId){
 		printf("\nPerros registrados: %i Introdusca un numero entre 0 y %i",numeroRegistros,numeroRegistros-1);
 		printf("\nRegistro que desea borrar:\t ");		
 		scanf("%d",&opcion);	
-		if(opcion<0 || opcion >= numeroRegistros && numeroRegistros>0){
+		if((opcion<0 || opcion >= numeroRegistros) && numeroRegistros>0){
 			printf("Introdusca un registro correcto\n");
 		}
 	}while(( numeroRegistros > 0 )&& (opcion<0 || opcion >= numeroRegistros));
@@ -295,7 +295,7 @@ void buscar(int clientId){
 		exit(-1);
 	}
 	if(numeroRegistros>0){
-		printf("\nSe encontro cliente%i servidor%i registos con ese nombre\n\n",encontrados,siguiente);
+		printf("\nSe encontro cliente %i servidor %i registos con ese nombre\n\n",encontrados,siguiente);
 	}else{
 		printf("\nPrimero ingrese un registro pues no hay donde buscar\n");
 	}
@@ -356,9 +356,9 @@ void recvPerro(void *ap, int clientId){
     int tam=sizeof(struct dogType),r=0,tamTotal=0;
     do{
     r=recv(clientId,recibiendo+tamTotal,tam-tamTotal,0);
-	if(r<0){perror("Error al enviar perro");exit(-1);}    
+	if(r<0){perror("Error al recibir perro");exit(-1);}    
     tamTotal=tamTotal+r;
-    printf("\nRecibido %i total %i/%i\n",r,tamTotal,tam);
+    printf("\nRecibido %i total %i / %i\n",r,tamTotal,tam);
     }while(tam-tamTotal!=0);
 }
 void sendPerro(void *ap,int clientId){

@@ -404,7 +404,6 @@ void borrar(void *cliente){
 		}
 	}while(!found && numeroRegistros>0);
 	if(numeroRegistros>0){
-		fread(borrado,sizeof(struct dogType),1,file);	
 		sendPerro(borrado,hilo->clientId);//envia el perro que se borrara
 		rewind(file);	
 		newfile = fopen("temp.dat","w+");
